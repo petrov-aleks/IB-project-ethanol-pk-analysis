@@ -49,14 +49,16 @@ theme_set(
 )
 ```
 
-
 ```{r}
 Jones_1984 <- read_csv("data/raw/Jones-1984.csv")
 
 Jones_1984
 ```
 
+## Спагетти-плоты
+
 ```{r}
+#Спагетти-плот для каждого пациента
 Jones_1984 %>% 
 ggplot(aes(x = time_min,
              y = conc_g_per_L,
@@ -73,3 +75,29 @@ ggplot(aes(x = time_min,
            
 ```
 
+```{r}
+# Спагетти-плот каждой временной точки +-SD
+Jones_1984 %>%
+  group_by(time_min) %>%
+  summarise(
+    mean_conc = mean(conc_g_per_L),
+    sd_conc = sd(conc_g_per_L)
+  ) %>%
+  ggplot(aes(x = time_min, y = mean_conc)) +
+  geom_line(color = "blue", size = 1) +
+  geom_ribbon(aes(ymin = mean_conc - sd_conc,
+                  ymax = mean_conc + sd_conc),
+              alpha = 0.2, fill = "lightblue") +
+  labs(x = "Время, мин",
+       y = "Средняя концентрация, г/л",
+       title = "Средняя концентрация с +-SD по времени") +
+  theme_bw()
+```
+
+## Расчет основных фармакокинетических параметров: Cmax, tmax, AUC0-t ,
+β, Vd
+
+```{r}
+#Cmax
+
+```
