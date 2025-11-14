@@ -52,7 +52,8 @@ theme_set(
 ```{r}
 Jones_1984 <- read_csv("data/raw/Jones-1984.csv")
 
-Jones_1984
+str(Jones_1984)
+skimr::skim(Jones_1984)
 ```
 
 ## Спагетти-плоты
@@ -94,10 +95,148 @@ Jones_1984 %>%
   theme_bw()
 ```
 
-## Расчет основных фармакокинетических параметров: Cmax, tmax, AUC0-t ,
-β, Vd
+## Расчет основных фармакокинетических параметров: Cmax, tmax, AUC0-t β, Vd
+
+###Считаем Cmax,tmax
 
 ```{r}
-#Cmax
+#Cmax и tmax
 
+#Берем максимальные значения концентрации и соответствующего времени
+
+pk_cmax_tmax <-  Jones_1984 %>%
+  group_by(subject_id) %>%
+  summarise(
+    Cmax_g_per_L = max(conc_g_per_L),
+    tmax_min = time_min[which.max(conc_g_per_L)]
+  )
+
+pk_cmax_tmax
+
+pk_cmax_tmax %>% 
+  ggplot(aes(x=Cmax_g_per_L)) + 
+  geom_histogram(fill="#69b3a2", color="#e9ecef", alpha=0.9)+
+  labs(x = "Cmax г/л", y = "Количество") 
 ```
+
+### Считаем AUC0-t: площадь под кривой от 0 до последнего измерения
+
+```{r}
+#AUC0-t
+# t Измеряется в часах, переводим
+# сумма средних концентраций между двумя точками умноженная на разницы во времени
+
+pk_auc <- Jones_1984 %>%
+  group_by( subject_id) %>%
+  arrange(time_min) %>%
+  mutate(time_h = time_min / 60) %>%
+  summarise(
+    AUC0_t_g_h_per_L = sum(
+      (lead(time_h) - time_h) * (conc_g_per_L + lead(conc_g_per_L)) / 2, #lead берет следующее значение для каждой строки
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  )
+
+pk_auc
+
+pk_auc %>% 
+  ggplot(aes(x=AUC0_t_g_h_per_L)) + 
+  geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.9) +
+  geom_boxplot() +
+  labs(x = "AUC0-t, г/л", y = "Плотность") 
+```
+
+### Посчитаем Vd (объем распределения) и $\beta$ (константа скорости элиминации)
+линейная модель 
+$$
+C(t) = C_0 - \beta t
+$$
+
+```{r}
+#| fig-height: 5
+#| fig-width: 12
+#test <- lm(conc_g_per_L~ time_min, data = Jones_1984) проверил чтобы посмотреть как взять коэффициенты
+
+pk_beta_vd <- Jones_1984 %>% 
+  group_by(subject_id) %>% 
+  filter(conc_g_per_L > 0) %>% 
+  slice_tail(n = 3) %>% 
+  group_modify(~ {
+    fit  <- lm(conc_g_per_L ~ time_min, data = .x)
+    C0   <- coef(fit)[["(Intercept)"]]
+    beta <- -coef(fit)[["time_min"]]
+    tibble(
+      C0_g_per_L = C0,
+      beta_g_L_per_min = beta,
+      Vd_L_per_kg = 0.68 / C0
+    )
+  }) %>%
+  ungroup()
+
+
+p1 <- pk_beta_vd %>% 
+  ggplot(aes(x = C0_g_per_L)) + 
+  geom_density(fill = "blue", color = "#e9ecef", alpha = 0.9) +
+  labs(x = "C0, г/л")   
+
+p2 <- pk_beta_vd %>% 
+  ggplot(aes(x = beta_g_L_per_min)) + 
+  geom_density(fill = "red", color = "#e9ecef", alpha = 0.9) +
+  labs(x = "β, г/(л·мин)")   
+
+p3 <- pk_beta_vd %>% 
+  ggplot(aes(x = Vd_L_per_kg)) + 
+  geom_density(fill = "yellow", color = "#e9ecef", alpha = 0.9) +
+  labs(x = "Vd, л/кг") 
+
+(p1 + p2 + p3) +
+  plot_layout(axis_titles = "collect") & 
+  labs(y = "Плотность")
+```
+
+### Посчитаем базовые статистики
+
+```{r}
+#| message: false
+
+pk_stats_raw <-  pk_cmax_tmax %>% 
+left_join(pk_auc) %>% 
+left_join(pk_beta_vd) %>%
+  select(-subject_id) %>%
+  rename(
+    C0  = C0_g_per_L,
+    Cmax = Cmax_g_per_L,
+    tmax = tmax_min,
+    AUC0 = AUC0_t_g_h_per_L,
+    beta = beta_g_L_per_min,
+    Vd = Vd_L_per_kg
+  ) %>%
+  summarise(
+    across(everything(),
+           list(
+             mean = ~ mean(.),
+             median = ~ median(.),
+             sd = ~ sd(.),
+             СV = ~ sd(.) / mean(.) * 100
+           )
+    )
+  )
+
+
+pk_stats <- pk_stats_raw %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to  = c("parameter", "stat"),
+    names_sep = "_",          
+    values_to = "value"
+  ) %>%
+  pivot_wider(
+    names_from  = stat,      
+    values_from = value
+  ) %>%
+  rename(показатель = parameter)
+
+pk_stats
+```
+
