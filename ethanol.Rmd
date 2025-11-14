@@ -1,0 +1,280 @@
+---
+title: "Ethanol"
+author: "Alexey Gordeev"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(flextable))
+library(patchwork)
+```
+
+```{r stardart-fun-theme-etc}
+standard_theme <- theme_bw() +
+  theme(plot.title = element_text(size = 30, hjust = 0.5),
+    plot.subtitle = element_text(size = 25, hjust = 0.5),
+    plot.caption = element_text(size = 20),
+    axis.title = element_text(size = 25),
+    axis.text.y = element_text(size = 20),
+    axis.text.x = element_text(size = 20),
+    legend.title = element_text(size = 20),
+    legend.text = element_text(size = 22),
+    strip.text = element_text(size = 22))
+theme_set(standard_theme)
+
+set_flextable_defaults(table.layout = "autofit")
+
+stat <- list(
+        "Mean" = ~mean(., na.rm = TRUE),
+        "Std_dev"   = ~sd(., na.rm = TRUE)
+      )
+stat_ph <- list(
+        "Среднее" = ~mean(., na.rm = TRUE) %>% round(4),
+        "Медиана" = ~median(., na.rm = TRUE)%>% round(4),
+        "Стандартное отклонение"   = ~sd(., na.rm = TRUE) %>% round(4),
+        "Коэффициент вариации (CV), %" = ~round((sd(., na.rm = TRUE))/(mean(., na.rm = TRUE)) * 100, 2)
+        )
+```
+
+
+# Чтение данных
+
+```{r cars}
+ethanol <- read_delim("./data/raw/Jones-1984.csv")
+ethanol <- ethanol %>% 
+  mutate(across(where(is.character), as.factor))
+summary(ethanol)
+str(ethanol)
+```
+
+# Визуализация
+## Индивидуальные кривые концентрации-время
+
+```{r, fig.height=12, fig.width=15, dpi=300}
+ggplot(ethanol, aes(x = time_min, y = conc_g_per_L)) +
+  geom_line(aes(group = subject_id)) +
+  geom_smooth(method = "gam") +
+  scale_y_continuous(breaks = seq(0, 1.4, 0.1)) +
+  scale_x_continuous(breaks = seq(0, 420, 30)) +
+  # coord_cartesian(xlim = c(60, 420)) +
+  labs(title = "Спагетти-плот - кривые концентрации время",
+       subtitle = "Для демонстрации тренда применён метод GAM",
+       caption = "Jones-1984",
+       x = "Время, мин",
+       y = "Концентрация, г/л")
+```
+## Общая кривая (среднее плюс стандартное отклонение)
+
+```{r, fig.height=12, fig.width=15, dpi=300}
+ethanol %>% 
+  mutate(time_min = time_min %>% as.character) %>% 
+  group_by(time_min) %>% 
+  summarise(across(conc_g_per_L, stat, .names = "{.fn}")) %>% 
+  ungroup() %>% 
+  mutate(time_min = time_min %>% as.numeric) %>% 
+  ggplot(aes(y = Mean, x = time_min)) +
+  geom_point() +
+  geom_line(aes(group = "")) +
+  geom_errorbar(aes(ymin = Mean - Std_dev,
+                    ymax = Mean + Std_dev),
+                width = 20) +
+   scale_y_continuous(breaks = seq(0, 1.4, 0.1)) +
+  scale_x_continuous(breaks = seq(0, 420, 30)) +
+  labs(title = "Среднее ± стандартное отклонение\nдля каждой временной точки",
+       caption = "Jones-1984",
+       x = "Время, мин",
+       y = "Концентрация, г/л")
+```
+
+```{r, fig.height=12, fig.width=15, dpi=300}
+ggplot(ethanol, aes(x = time_min, y = conc_g_per_L)) +
+  geom_smooth(method = "lm", aes(group = subject_id), se = FALSE) +
+  scale_y_continuous(breaks = seq(0, 1.4, 0.1)) +
+  scale_x_continuous(breaks = seq(0, 420, 30)) + 
+  labs(title = "Линейная регрессия концентрации для каждого субъекта",,
+       caption = "Jones-1984",
+       x = "Время, мин",
+       y = "Концентрация, г/л")
+```
+
+# Расчёт основных фармакокинетических показателей 
+
+```{r, eval=FALSE,echo=FALSE}
+
+# AUC_ltr <- function(conc, t) {
+#   df <- tibble(conc = conc, t = t)
+#   df <- df %>% arrange(t)
+#   sum_auc <- 0
+#   t1 <- first(df$t)
+#   tlast <- nth(df$t, -2)
+#   for (conc in t1:tlast) {
+#     
+#     sum_auc <- sum_auc +
+#   }
+#   return(auc_ltr)
+#   }
+
+# AUC_ltr <- function(conc, t) {
+#   if (length({{t}}) < 2) AUC <- NA
+#   if (anyNA({{t}}) | anyNA({{conc}})) AUC <- NaN
+#   t0 = {{t}}[-length({{t}})]
+#   t1 = {{t}}[-1]
+#   c0 = {{conc}}[-length({{conc}})]
+#   c1 = {{conc}}[-1]
+#   AUC = sum(((c0 + c1)/2)*(t1 - t0))
+#   return(AUC)
+# }
+# 
+# Cmax <- function(conc) {
+#   cmax <- max(conc)
+#   return(cmax)
+# }
+# 
+# Tmax <- function(t, conc) {
+#   tmax <- t[first(which.max(conc))]
+#   return(tmax)
+# }
+```
+
+
+```{r}
+#k - это насколько мы прибавляем к индексу tmax
+pharma_fun <- function(conc, t, dose, k = 2) {
+  # Моделирование для подсчёта beta, C0, Vd
+  t_sample <- {{t}}[(first(which.max({{conc}})) + k):length({{t}})]
+  conc_sample <- conc[(first(which.max({{conc}})) + k):length({{conc}})]
+  dose <- first({{dose}})
+  model <- lm({{conc_sample}} ~ {{t_sample}})
+  Beta <- -as.numeric(model$coefficients[2])
+  C_0 <- as.numeric(model$coefficients[1])
+  V_d <- dose / C_0
+  
+  # Подсчёт AUC0-t
+  
+  # if (length({{t}}) < 2) AUC <- NA
+  # if (anyNA({{t}}) | anyNA({{conc}})) AUC <- NaN
+  t0 = {{t}}[-length({{t}})]
+  t1 = {{t}}[-1]
+  c0 = {{conc}}[-length({{conc}})]
+  c1 = {{conc}}[-1]
+  AUC = sum(((c0 + c1)/2)*(t1 - t0))
+  
+  # Подсчёт Cmax
+  cmax <- max(conc)
+  
+  # Подсчёт Tmax
+  tmax <- t[first(which.max(conc))]
+  return(list(Beta = Beta,
+              C_0 = C_0,
+              V_d = V_d,
+              AUC = AUC,
+              Cmax = cmax,
+              Tmax = tmax))
+}
+
+ethanol %>% 
+  arrange(time_min) %>% 
+  nest(.by = subject_id, .key = "subject_data") %>% 
+  mutate(pharma = purrr::map(subject_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-subject_data) -> pharmacokinetics_data
+
+```
+
+# Описательные статистики для фармакокинетических показателей
+
+```{r}
+pharmacokinetics_data <- pharmacokinetics_data %>% 
+  mutate(Beta = Beta * 60) %>%  # перевожу в г/л в час
+  rename(`β, г/л в час` = Beta,
+         `C0, г/л` = C_0,
+         `Vd, л/кг` = V_d,
+         `AUC0-t, г*мин/л` = AUC,
+         `Cmax, г/л` = Cmax,
+         `Tmax, мин` = Tmax)
+pharmacokinetics_data %>% 
+  pivot_longer(!subject_id,
+               names_to = "Показатель",
+               values_to = "Значение") %>% 
+  group_by(`Показатель`) %>% 
+  summarise(across(`Значение`, stat_ph, .names = "{.fn}")) %>% 
+  ungroup() %>% 
+  flextable() %>%
+  theme_box %>% 
+  fontsize(size=9) %>% 
+  add_header_row(values  = "Описательные статистики фармакокинетических показателей", colwidths = 5)
+```
+
+
+# Построение графиков
+
+
+```{r, fig.height=17, fig.width=20, dpi=300}
+hist_fn <- function(data, col) {
+  
+  ggplot(data, aes(x = {{col}})) +
+  geom_boxplot(
+    alpha = 0.5,
+  # width = width,
+    linewidth = 1.5,
+    outlier.size = 2
+  ) +
+  geom_histogram(
+    fill = "midnightblue",
+    alpha = 0.5,
+    colour = "black",
+    bins = 25
+  ) +
+    geom_vline(aes(xintercept = mean({{col}}, na.rm = T)),
+               color = "darkred",
+               linetype = 2,
+               linewidth = 2) +
+  labs(# title = rlang::englue("{{col}}"),
+       y = "Количество, n",
+       x = rlang::englue("{{col}}")) +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title = element_text(size = 25),
+        axis.text.y = element_text(size = 23),
+        axis.text.x = element_text(size = 23),
+        legend.title = element_text(size = 23),
+        legend.text = element_text(size = 23))
+}
+
+col_list <- pharmacokinetics_data %>%
+  select(-subject_id) %>%
+  names() %>%
+  syms()
+
+hist_plots <- purrr::map(col_list,
+    ~ hist_fn(pharmacokinetics_data, !!.x))
+
+wrap_plots(hist_plots, ncol = 2) +
+  plot_annotation(title = "Гистограммы и боксплоты фарм. показателей",
+                  theme = standard_theme)
+```
+
+# Интерпретация результатов
+
+1) Фармакокинетические кривые в целом лежат достаточно кучно, имеют очень похожие профили;
+
+2) В основном $Cmax$ достигалась на 30 минуте, всего представлены 4 различных $Tmax$;
+
+3) Похоже, что распределения константы элиминации и площади под кривой бимодальны;
+
+4) Средняя $Cmax$ составила 0.93 ⼠ 0.16 г/л;
+
+5) Не смотря на гомогенность выборки по основным параметрам у $Tmax$ значительный коэффициент вариации (около 50%), возможно, не учтён какой-либо фактор;
+
+6) Мне кажется, что полученное распределения $C_0$ и $β$ имеют достаточно низкую вариабельность.
