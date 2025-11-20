@@ -57,7 +57,9 @@ occasion_1 <- Ammon_clean %>%
   filter(occasion == 1) %>% 
   group_by(subject_id) %>% 
   ggplot()+
-  geom_line(aes(x = time_min, y = conc_g_per_L, group = subject_id, colour = subject_id)) +
+  geom_line(aes(x = time_min, y = conc_g_per_L, group = subject_id, colour = factor(subject_id))) +
+  geom_point(aes(x = time_min, y = conc_g_per_L, colour = factor(subject_id)), size = 2) +
+  scale_x_continuous(breaks = seq(0, 360, by = 30)) +
   labs(x = "Время, мин",
        y = "Концентрация г/л",
        title = "Occasion 1")+
@@ -67,7 +69,9 @@ occasion_2 <- Ammon_clean %>%
   filter(occasion == 2) %>% 
   group_by(subject_id) %>% 
   ggplot()+
-  geom_line(aes(x = time_min, y = conc_g_per_L, group = subject_id, colour = subject_id))+
+  geom_line(aes(x = time_min, y = conc_g_per_L, group = subject_id, colour = factor(subject_id)))+
+  geom_point(aes(x = time_min, y = conc_g_per_L, colour = factor(subject_id)), size = 2) +
+  scale_x_continuous(breaks = seq(0, 360, by = 30)) +
     labs(x = "Время, мин",
        y = "Концентрация г/л",
        title = "Occasion 2") +
@@ -131,31 +135,39 @@ summ_ammon_2
 ### Среднее и стандартное отклонение для каждого из экспериментов - график
 
 ```{r summary datatvis, fig.width=20, fig.height=10}
-summ_1 <- ggplot(summ_ammon_1) +
-  geom_errorbar(aes(x = factor(time_min),
-                    ymin = mean_conc - sd_conc,
-                    ymax = mean_conc + sd_conc),
-                width = .2)+
-  geom_point(aes(x = factor(time_min), y = mean_conc)) +
-  labs(x = "Время, мин",
-       y = "Концентрация, г/л")+
-  scale_y_continuous(
-    breaks = c(seq(0, 1, 0.05))
-  )
 
-summ_2 <- ggplot(summ_ammon_2) +
-  geom_errorbar(aes(x = factor(time_min),
-                    ymin = mean_conc - sd_conc,
-                    ymax = mean_conc + sd_conc),
-                width = .2)+
-  geom_point(aes(x = factor(time_min), y = mean_conc)) +
-  labs(x = "Время, мин",
-       y = "Концентрация, г/л")+
-  scale_y_continuous(
-    breaks = c(seq(0, 1, 0.05))
-  )
 
-summ_1 | summ_2
+summ_1 <- ggplot(summ_ammon_1, aes(x = time_min, y = mean_conc)) +
+  geom_line(color = "blue", size = 1) +
+  geom_ribbon(aes(ymin = mean_conc - sd_conc,
+                  ymax = mean_conc + sd_conc),
+              alpha = 0.2, fill = "lightblue") +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = seq(0, 360, by = 30)) +
+  labs(x = "Время, мин",
+       y = "Концентрация, г/л",
+      subtitle = "Occasion 1") +
+  scale_y_continuous(
+    breaks = seq(0, 1, 0.05)
+  ) 
+
+summ_2 <- ggplot(summ_ammon_2, aes(x = time_min, y = mean_conc)) +
+  geom_line(color = "blue", size = 1) +
+  geom_ribbon(aes(ymin = mean_conc - sd_conc,
+                  ymax = mean_conc + sd_conc),
+              alpha = 0.2, fill = "lightblue") +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = seq(0, 360, by = 30)) +
+  labs(x = "Время, мин",
+       y = "Концентрация, г/л",
+      subtitle = "Occasion 2") +
+  scale_y_continuous(
+    breaks = seq(0, 1, 0.05)
+  ) 
+
+
+(summ_1 | summ_2) +
+  plot_annotation(title = "Средняя концентрация ± SD" )
 ```
 
 ## Фармакокинетические параметры
@@ -279,33 +291,39 @@ summ_oc_1 | summ_oc_2
 ```
 
 
-## 2 Occasion 2 (Милана)
-### Выделение датасета с occasion 1
-
-```{r Occasion 2}
-
-```
-
-
-### Визуализации спагетти-плот
 ```{r}
-
+#Спагетти-плот для каждого пациента
+Jones_1984 %>% 
+ggplot(aes(x = time_min,
+             y = conc_g_per_L,
+             group = subject_id,
+             color = factor(subject_id))) +
+  geom_line(alpha = 0.6) +
+  geom_point(size = 0.8, alpha = 0.8) +
+  labs(x = "Время, мин",
+       y = "Концентрация, г/л",
+       color = "Испытуемый",
+       title = "График концентраций по испытуемым в виде индивидуальных кривых") +
+  theme_bw() +
+  theme(legend.position = "none")
+           
 ```
-
-### Расчет ФК + визуализация распределений
-
-```{r}
-
-```
-
-### ANOVA
 
 ```{r}
-
-```
-
-### CVInter, CVintra + визуализация результатов
-```{r}
-
-```
+# Спагетти-плот каждой временной точки +-SD
+Jones_1984 %>%
+  group_by(time_min) %>%
+  summarise(
+    mean_conc = mean(conc_g_per_L),
+    sd_conc = sd(conc_g_per_L)
+  ) %>%
+  ggplot(aes(x = time_min, y = mean_conc)) +
+  geom_line(color = "blue", size = 1) +
+  geom_ribbon(aes(ymin = mean_conc - sd_conc,
+                  ymax = mean_conc + sd_conc),
+              alpha = 0.2, fill = "lightblue") +
+  labs(x = "Время, мин",
+       y = "Средняя концентрация, г/л",
+       title = "Средняя концентрация с +-SD по времени") +
+  theme_bw()
 
