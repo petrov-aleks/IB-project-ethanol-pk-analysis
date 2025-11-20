@@ -13,7 +13,7 @@ library(patchwork)
 ## Задачи
 
 -   Загрузка датасета Ammon-1996 (у нас команда 1). 
-  -   Сергей делает Occasion 1, Милана делает Occasion 2
+
 
 -   (EDA) Визуализация кривых концентрация-время (спагетти-плот) В виде индивидуальных кривых (сравнение между occasion) В виде среднего +- стандартное отклонение для каждой временной точки
 
@@ -105,7 +105,8 @@ conc_time <- map(subjID,
                   conc_time_func(subID=x)+
                   scale_x_continuous(name = paste0("#ID: ", x)))
 
-wrap_plots(conc_time)
+wrap_plots(conc_time) &
+  plot_annotation(title = "Сравнение концентрация-время для каждого субъекта по 2 экспериментам") 
 ```
 
 ### Среднее и стандартное отклонение для каждого из экспериментов
@@ -168,6 +169,7 @@ summ_2 <- ggplot(summ_ammon_2, aes(x = time_min, y = mean_conc)) +
 
 (summ_1 | summ_2) +
   plot_annotation(title = "Средняя концентрация ± SD" )
+
 ```
 
 ## Фармакокинетические параметры
