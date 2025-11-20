@@ -77,7 +77,7 @@ occasion_2 <- Ammon_clean %>%
        title = "Occasion 2") +
   theme(legend.position = "none")
 
-occasion_1 | occasion_2. fd
+occasion_1 | occasion_2
 ```
 
 ### Графики сравнения двух экспериментов для каждого субъекта
@@ -282,7 +282,6 @@ summ_oc_1 | summ_oc_2
 
 ```{r}
 
-
 ```
 
 ### CVInter, CVintra + визуализация результатов
@@ -290,5 +289,6 @@ summ_oc_1 | summ_oc_2
 ```{r}
 
 ```
+
 
 
