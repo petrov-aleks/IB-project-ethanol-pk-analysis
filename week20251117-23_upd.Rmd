@@ -4,6 +4,7 @@ author: "Alexey Gordeev, Anna Vronskaia"
 date: "`r Sys.Date()`"
 output:
   html_document:
+    code_folding: hide
     toc: true
     toc_depth: 2
     toc_float: true
@@ -257,6 +258,7 @@ wrap_plots(hist_plots, ncol = 2) +
   plot_annotation(title = "Гистограммы и боксплоты фарм. показателей",
                   theme = standard_theme)
 ```
+
 # CVinter и CVintra
 
 ```{r}
