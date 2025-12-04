@@ -75,14 +75,20 @@ Wilkinson_IV_clean <- Wilkinson_IV %>%
 ```{r pk_calc_functions}
 #k - это насколько мы прибавляем к индексу tmax
 pharma_fun <- function(conc, t, dose, k = 2) {
-  # Моделирование для подсчёта beta, C0, Vd
+  # Моделирование для подсчёта beta, C0, Vd 0 порядка
   t_sample <- {{t}}[(first(which.max({{conc}})) + k):length({{t}})]
   conc_sample <- conc[(first(which.max({{conc}})) + k):length({{conc}})]
   dose <- first({{dose}})
   model <- lm({{conc_sample}} ~ {{t_sample}})
   Beta <- -as.numeric(model$coefficients[2])
-  C_0 <- as.numeric(model$coefficients[1])
-  V_d <- dose / C_0
+  C_0_0_order <- as.numeric(model$coefficients[1])
+  V_d_0_order <- dose / C_0_0_order
+  
+  # Моделирование для подсчёта kel, C0, Vd 1 порядка
+  model_1 <- lm(log({{conc_sample}}) ~ {{t_sample}})
+  Kel <- -as.numeric(model_1$coefficients[2])
+  C_0_1_order <- as.numeric(model_1$coefficients[1])
+  V_d_1_order <- dose / C_0_1_order
   
   # Подсчёт AUC0-t
   
@@ -100,8 +106,11 @@ pharma_fun <- function(conc, t, dose, k = 2) {
   # Подсчёт Tmax
   tmax <- t[first(which.max(conc))]
   return(list(Beta = Beta,
-              C_0 = C_0,
-              V_d = V_d,
+              Kel = Kel,
+              C_0_0_order = C_0_0_order,
+              V_d_0_order = V_d_0_order,
+              C_0_1_order = C_0_1_order,
+              V_d_1_order = V_d_1_order,
               AUC = AUC,
               Cmax = cmax,
               Tmax = tmax))
