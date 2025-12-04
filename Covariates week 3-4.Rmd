@@ -71,7 +71,16 @@ Wilkinson_IV_clean <- Wilkinson_IV %>%
 ```
 
 ```{r wilkinson_po_clean}
-  
+Wilkinson_PO_clean <- Wilkinson_PO %>% 
+  filter(!is.na(conc_g_per_L)) %>% 
+  mutate(subject_id = paste("W-PO", subject_id, sep = "-")) %>% 
+  rename(wt_kg = WT_kg,
+         sex = Sex,
+         bh_cm = BH_cm,
+         bsa_m2 = BSA_m2,
+         age = Age)  
+
+head(Wilkinson_PO_clean)
 ```
 
 ```{r westal_old_clean}
@@ -146,8 +155,21 @@ Emberger_2023_clean %>%
 
 ```
 
-```{r wilkinson_po_ind_plot}
-  
+```{r wilkinson_po_ind_plot, fig.width=20, fig.height=14}
+Wilkinson_PO_clean %>% 
+  select(subject_id, conc_g_per_L, time_min) %>% 
+  mutate(subject_id = subject_id %>% str_remove_all("W-PO")) %>%
+  ggplot(aes(color = subject_id)) +
+  geom_line(aes(x = time_min, y = conc_g_per_L, group = subject_id), linewidth = 2) +
+  scale_x_continuous(breaks = seq(0, 420, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +
+  scale_color_discrete(breaks = as.character(1:10)) +
+    labs(title = "Зависимость концентрации от времени",
+         subtitle = "Индивидуальные кривые для каждого субъекта", 
+         x = "Время, мин", y = "Концентрация, г/л",
+         color = "Субъект", 
+         caption = "По данным Wilkinson-1976-PO") +
+  theme(legend.position = "top")
 ```
 
 ```{r westal_old_ind_plot}
@@ -197,8 +219,23 @@ Emberger_2023_clean %>%
 
 ```
 
-```{r wilkinson_po__mean_sd_plot}
-  
+```{r wilkinson_po__mean_sd_plot, fig.width=24, fig.height=16}
+Wilkinson_PO_clean %>% 
+  group_by(subject_id) %>%
+  mutate(point_id = row_number() %>% as.factor) %>% 
+  ungroup() %>% 
+  group_by(point_id) %>% 
+  summarise(conc_avg = mean(conc_g_per_L), conc_max = mean(conc_g_per_L) + sd(conc_g_per_L), conc_min = mean(conc_g_per_L) - sd(conc_g_per_L), time_min_avg = mean(time_min)) %>% 
+  ggplot() +
+  geom_line(aes(x = time_min_avg, y = conc_avg)) +
+  geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
+  scale_x_continuous(breaks = seq(0, 400, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
+  labs(title = "Зависимость концентрации от времени",
+       subtitle = "Mean ± SD",
+       x = "Время, мин",
+       y = "Концентрация, г/л",
+       caption = "По данным Wilkinson-1976-PO")  
 ```
 
 ```{r westal_old_mean_sd_plot}
@@ -334,7 +371,22 @@ Wilkinson_IV_pk <- Wilkinson_IV_clean %>%
 ```
 
 ```{r wilkinson_po_pk}
-  
+Wilkinson_PO_pk <- Wilkinson_PO_clean %>% 
+  arrange(time_min) %>% 
+  nest(.by = subject_id, .key = "subject_data") %>% 
+  mutate(pharma = purrr::map(subject_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-subject_data)
+
+Emberger_2023_pk <- Emberger_2023_clean %>% 
+  select(-c(time_min, conc_g_per_L)) %>% 
+  group_by(subject_id) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  right_join(Emberger_2023_pk)
 ```
 
 ```{r westal_old_pk}
