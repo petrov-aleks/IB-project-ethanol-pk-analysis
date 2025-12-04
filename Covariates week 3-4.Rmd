@@ -20,9 +20,21 @@ Wilkinson_PO <- read.csv("data/raw/Wilkinson-1976-PO.csv")
 Vestal_1977_elderly <- read.csv("data/raw/Vestal-1977-elderly.csv")
 Vestal_1977_young <- read.csv("data/raw/Vestal-1977-young.csv")
 
+standard_theme <- theme_bw() +
+  theme(plot.title = element_text(size = 30, hjust = 0.5),
+    plot.subtitle = element_text(size = 25, hjust = 0.5),
+    plot.caption = element_text(size = 20),
+    axis.title = element_text(size = 25),
+    axis.text.y = element_text(size = 20),
+    axis.text.x = element_text(size = 20),
+    legend.title = element_text(size = 20),
+    legend.text = element_text(size = 22),
+    strip.text = element_text(size = 22))
+theme_set(standard_theme)
+set_flextable_defaults(table.layout = "autofit")
 ```
 
-1. Приведение данных к единому виду
+# 1. Приведение данных к единому виду
 
 ```{r ammon_clean}
 Ammon_1996_clean <- Ammon_1996 %>% 
@@ -97,19 +109,126 @@ Vestal_1977_y_clean <- Vestal_1977_y_clean %>%
   select(-cmax_mg_dl) %>%  relocate(cmax, .before = dose_g_per_kg)  
 ```
 
-2. Расчет ФК параметров для датасетов
+# 2. Графики по датасетам
+
+# 2.1 Графики индивидуальных кривых
+
+```{r ammon_ind_plot}
+
+```
+
+```{r jones_ind_plot}
+
+```
+
+```{r yelland_ind_plot}
+
+```
+
+```{r emberger_ind_plot, fig.width=24, fig.height=16}
+Emberger_2023_clean %>% 
+  select(subject_id, conc_g_per_L, time_min) %>% 
+  mutate(subject_id = subject_id %>% str_remove_all("TE-")) %>%
+  ggplot(aes(color = subject_id)) +
+  geom_line(aes(x = time_min, y = conc_g_per_L, group = subject_id), linewidth = 2) +
+  scale_x_continuous(breaks = seq(0, 420, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +
+  scale_color_discrete(breaks = as.character(1:10)) +
+    labs(title = "Зависимость концентрации от времени",
+         subtitle = "Индивидуальные кривые для каждого субъекта", 
+         x = "Время, мин", y = "Концентрация, г/л",
+         color = "Субъект", 
+         caption = "По данным Thierauf-Emberger-2023") +
+  theme(legend.position = "top")
+```
+
+```{r wilkinson_iv_ind_plot}
+
+```
+
+```{r wilkinson_po_ind_plot}
+  
+```
+
+```{r westal_old_ind_plot}
+  
+```
+
+```{r vestal_young_ind_plot}
+  
+```
+
+# 2.2 Среднеее и стандартное отклонение концентрации по времени
+
+Время усреднено
+
+```{r ammon_mean_sd_plot}
+
+```
+
+```{r jones_mean_sd_plot}
+
+```
+
+```{r yelland_mean_sd_plot}
+
+```
+
+```{r emberger_mean_sd_plot, fig.width=24, fig.height=16}
+Emberger_2023_clean %>% 
+  group_by(subject_id) %>%
+  mutate(point_id = row_number() %>% as.factor) %>% 
+  ungroup() %>% 
+  group_by(point_id) %>% 
+  summarise(conc_avg = mean(conc_g_per_L), conc_max = mean(conc_g_per_L) + sd(conc_g_per_L), conc_min = mean(conc_g_per_L) - sd(conc_g_per_L), time_min_avg = mean(time_min)) %>% 
+  ggplot() +
+  geom_line(aes(x = time_min_avg, y = conc_avg)) +
+  geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
+  scale_x_continuous(breaks = seq(0, 400, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
+  labs(title = "Зависимость концентрации от времени",
+       subtitle = "Mean ± SD",
+       x = "Время, мин",
+       y = "Концентрация, г/л",
+       caption = "По данным Thierauf-Emberger-2023")
+```
+
+```{r wilkinson_iv_mean_sd_plot}
+
+```
+
+```{r wilkinson_po__mean_sd_plot}
+  
+```
+
+```{r westal_old_mean_sd_plot}
+  
+```
+
+```{r vestal_young_mean_sd_plot}
+  
+```
+
+# 3. Расчет ФК параметров для датасетов
 
 ```{r pk_calc_functions}
 #k - это насколько мы прибавляем к индексу tmax
-pharma_fun <- function(conc, t, dose, k = 2) {
-  # Моделирование для подсчёта beta, C0, Vd
+pharma_fun <- function(conc, t, dose, k = 1) {
+  # Моделирование для подсчёта beta, C0, Vd 0 порядка
   t_sample <- {{t}}[(first(which.max({{conc}})) + k):length({{t}})]
   conc_sample <- conc[(first(which.max({{conc}})) + k):length({{conc}})]
   dose <- first({{dose}})
-  model <- lm({{conc_sample}} ~ {{t_sample}})
+  model <- lm(conc_sample ~ t_sample)
   Beta <- -as.numeric(model$coefficients[2])
-  C_0 <- as.numeric(model$coefficients[1])
-  V_d <- dose / C_0
+  C_0_0_order <- as.numeric(model$coefficients[1])
+  V_d_0_order <- dose / C_0_0_order
+  
+  # Моделирование для подсчёта kel, C0, Vd 1 порядка
+  indexes <- conc_sample > 0
+  model_1 <- lm(log(conc_sample[indexes]) ~ t_sample[indexes])
+  Kel <- -as.numeric(model_1$coefficients[2])
+  C_0_1_order <- exp(as.numeric(model_1$coefficients[1]))
+  V_d_1_order <- dose / C_0_1_order
   
   # Подсчёт AUC0-t
   
@@ -127,8 +246,11 @@ pharma_fun <- function(conc, t, dose, k = 2) {
   # Подсчёт Tmax
   tmax <- t[first(which.max(conc))]
   return(list(Beta = Beta,
-              C_0 = C_0,
-              V_d = V_d,
+              Kel = Kel,
+              C_0_0_order = C_0_0_order,
+              V_d_0_order = V_d_0_order,
+              C_0_1_order = C_0_1_order,
+              V_d_1_order = V_d_1_order,
               AUC = AUC,
               Cmax = cmax,
               Tmax = tmax))
@@ -152,7 +274,7 @@ Jones_1984_pk <- Jones_1984_clean %>%
                                         .$time_min,
                                         .$dose_g_per_kg))) %>% 
   unnest_wider(col = pharma) %>% 
-  select(-subject_data) -> pharmacokinetics_data  
+  select(-subject_data)  
 ```
 
 ```{r ammon_pk}
@@ -164,7 +286,7 @@ Ammon_1996_pk <- Ammon_1996_clean %>%
                                         .$time_min,
                                         .$dose_g_per_kg))) %>% 
   unnest_wider(col = pharma) %>% 
-  select(-subject_data) -> pharmacokinetics_data  
+  select(-subject_data)  
 ```
 
 ```{r yelland_pk}
@@ -176,11 +298,26 @@ Yelland_2008_pk <- Yelland_2008_clean %>%
                                         .$time_min,
                                         .$dose_g_per_kg))) %>% 
   unnest_wider(col = pharma) %>% 
-  select(-subject_data) -> pharmacokinetics_data  
+  select(-subject_data)  
 ```
 
 ```{r emberger_pk}
-  
+Emberger_2023_pk <- Emberger_2023_clean %>% 
+  arrange(time_min) %>% 
+  nest(.by = subject_id, .key = "subject_data") %>% 
+  mutate(pharma = purrr::map(subject_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-subject_data)
+
+Emberger_2023_pk <- Emberger_2023_clean %>% 
+  select(-c(time_min, conc_g_per_L)) %>% 
+  group_by(subject_id) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  right_join(Emberger_2023_pk)
 ```
 
 ```{r wilkinson_iv_pk}
@@ -192,7 +329,7 @@ Wilkinson_IV_pk <- Wilkinson_IV_clean %>%
                                         .$time_min,
                                         .$dose_g_per_kg))) %>% 
   unnest_wider(col = pharma) %>% 
-  select(-subject_data) -> pharmacokinetics_data
+  select(-subject_data)
 
 ```
 
