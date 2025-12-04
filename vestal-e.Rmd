@@ -1,0 +1,251 @@
+---
+title: "vestal-e"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+library(GGally)
+```
+
+## Настройка темы
+
+```{r theme_set, echo=FALSE}
+theme_custom <-
+  theme(
+        axis.text.x = element_text(size = 20),
+        axis.text.y = element_text(size = 20, margin = margin(t = 15, unit = "pt")),
+        axis.title.x = element_text(size = 24),
+        axis.title.y = element_text(size = 24),
+        panel.background = element_rect(fill = "white", colour = "white"),
+        panel.grid = element_line(color = "gray85"),
+        legend.text = element_text(size=20),
+        legend.title = element_text(size=24),
+        plot.title = element_text(size = 30, margin = margin(b = 10, unit = "pt")),
+        plot.subtitle = element_text(size = 26, margin = margin(b = 15, unit = "pt"))
+  )
+```
+
+# Загрузка и подготовка датасета
+
+```{r upload, echo=FALSE}
+read_csv("data/raw/Vestal-1977-elderly.csv") %>% 
+  rename_with(tolower) -> data_vestal_e
+
+# read_csv("data/raw/Vestal-1977-young.csv") %>%
+#   rename_with(tolower) -> data_vestal_y
+# Можно сразу все вместе взять
+
+
+data_vestal_e <- data_vestal_e %>% 
+  mutate(
+    cmax = cmax_mg_dl * 0.01, # перевод в г/л
+    route = case_when(
+      str_detect(str_to_lower(route), "iv") ~ "IV",
+      str_detect(str_to_lower(route), "po") ~ "PO"
+    ),
+    id_unified = paste("VE", route, subject_id, sep = "-")
+  ) %>% 
+  select(-cmax_mg_dl) %>% 
+  relocate(id_unified, .before = subject_id) %>% 
+  relocate(cmax, .before = dose_g_per_kg)
+
+str(data_vestal_e)
+```
+
+```{r plot-conc-time-ind, fig.width=16, fig.height=9, echo=FALSE, warning=FALSE, message=FALSE}
+ggpairs(data_vestal_e[, "cmax", "age", "wt_kg", "bsa_m2", ])
+```
+
+
+```{r plot-conc-time, fig.width=24, fig.height=16, echo=FALSE, warning=FALSE, message=FALSE}
+
+```
+
+```{r point_num, echo=FALSE}
+current_num <- 1
+for(i in 1:nrow(data_Yelland)) {
+  if(data_Yelland$time_min[i] == 0) {
+    current_num <- 1  # обнуляем счетчик
+  } else {
+    current_num <- current_num + 1
+  }
+  data_Yelland$point_id[i] <- current_num
+}
+
+rm(i)
+rm(current_num)
+
+# можно сделать то же самое с помощью row_number()
+# data_Yelland %>% 
+#   group_by(subject_id) %>% 
+#   mutate(point_id = row_number())
+```
+
+
+```{r plot-conc-time-avg, fig.width=16, fig.height=9, echo=FALSE, warning=FALSE, message=FALSE}
+data_Yelland_conc <- data_Yelland %>% 
+  select(subject_id, conc_g_per_L, time_min, occasion, point_id) %>%
+  group_by(subject_id) %>%
+  group_by(point_id) %>%
+  mutate(conc_avg = mean(conc_g_per_L), conc_max = mean(conc_g_per_L) + sd(conc_g_per_L), conc_min = mean(conc_g_per_L) - sd(conc_g_per_L), time_min_avg = mean(time_min)) %>% 
+  filter(subject_id == 1) %>% 
+  select(time_min, conc_avg, conc_max, conc_min, time_min_avg) %>% 
+  ungroup()
+
+# Я бы сделал через summarise()
+
+data_Yelland_conc %>% 
+  ggplot() +
+  geom_line(aes(x = time_min_avg, y = conc_avg)) +
+  geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, size=0.5) +
+  scale_x_continuous(breaks = seq(0, 400, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
+  labs(title = "Зависимость концентрации от времени", subtitle = "Mean ± SD", x = "Время, мин", y = "Концентрация, г/л") +
+  theme_custom
+
+```
+
+# Расчет основных фармакокинетических параметров
+
+```{r pharm-parameters-calculation, message=FALSE, echo=FALSE}
+data_Yelland <- data_Yelland %>% 
+  group_by(subject_id) %>%
+  group_by(point_id) %>%
+  mutate(time_min_avg = mean(time_min)) %>% 
+  ungroup()
+
+pharm_par <- data_Yelland %>% 
+  select(conc_g_per_L, time_min_avg, subject_id) %>% 
+  group_by(subject_id) %>% 
+  filter(conc_g_per_L == max(conc_g_per_L)) %>% 
+  rename(Cmax = conc_g_per_L, tmax = time_min_avg) 
+
+pharm_par <- pharm_par %>% 
+  group_by(subject_id) %>% 
+  filter(tmax == min(tmax)) %>%  # выбрали самое первое время для Cmax
+  unique()
+
+calc <- data_Yelland %>% 
+  select(conc_g_per_L, time_min_avg, subject_id) %>% 
+  filter(time_min_avg > pharm_par$tmax[subject_id]) %>% 
+  group_by(subject_id) %>% 
+  nest() %>% 
+  mutate(model = map(data, ~ lm(conc_g_per_L ~ time_min_avg, data = .x)),
+         intable = map(model, broom::tidy))
+ 
+slope_dataset <-  calc %>% 
+  unnest(intable) %>% 
+  filter(term == "time_min_avg") %>% 
+  select(estimate) %>% 
+  rename(slope = estimate)
+
+Dose <- data_Yelland$dose_g_per_kg[1]
+
+C0_dataset <- calc %>% 
+  unnest(intable) %>% 
+  filter(term == "(Intercept)") %>% 
+  select(estimate, subject_id) %>% 
+  rename(C0 = estimate)
+
+pharm_par <-  left_join(C0_dataset, slope_dataset) %>% 
+  mutate(Min0 = -(C0/slope)) %>% 
+  select(subject_id, C0, Min0) %>% 
+  mutate(Vd = Dose/C0, beta = C0/Min0*60) %>% 
+  left_join(., pharm_par)
+  
+aucs <-  data_Yelland %>% 
+  select(subject_id, time_min_avg, conc_g_per_L) %>% 
+  group_by(subject_id) %>% 
+  arrange(subject_id, time_min_avg) %>%  # Убедимся в правильном порядке
+  mutate(
+    auc = (conc_g_per_L + lead(conc_g_per_L)) * 
+          (lead(time_min_avg) - time_min_avg)/ 2 # время надо перевести в часы, а г в мг
+  ) %>% 
+  summarise(
+    AUC0_t = sum(auc, na.rm = T)
+  )
+
+pharm_par <- left_join(pharm_par, aucs)
+```
+
+## Рассчитаем центральную тенденцию и разброс
+```{r pharm-parameters-stat, echo=FALSE}
+pharm_par <- pharm_par %>%
+  ungroup() %>%
+  rename("C0, г/л" = C0, "tmax, мин" = tmax, "AUC, г*мин/л" = AUC0_t, "Cmax, г/л" = Cmax, "Vd, л/кг" = Vd, "beta, г/л в час" = beta, "Min0, мин" = Min0)
+
+pharm_par_stat <- pharm_par %>% 
+    ungroup() %>% 
+    select(-subject_id) %>%
+    pivot_longer(everything()) %>% 
+    group_by(name) %>% 
+    summarise(
+        Mean = mean(value),
+        Median = median(value),
+        SD = sd(value),
+        CV = sd(value)/mean(value)*100,
+    ) %>% 
+  mutate(CV = round(CV, 1))
+
+beta_stat <- pharm_par_stat %>%
+  filter(name == "beta, г/л в час") %>% 
+  mutate(Mean = round(Mean,5), Median = round(Median,5), SD = round(SD,5)) %>% 
+  rename(Параметр = name, Среднее = Mean, Медиана = Median, "CV, %" = CV) 
+
+C0_Cmax_Vd_stat <- pharm_par_stat %>% 
+  filter(name == "C0, г/л" | name == "Cmax, г/л" | name == "Vd, л/кг") %>% 
+  mutate(Mean = round(Mean,3), Median = round(Median,3), SD = round(SD,3)) %>% 
+  rename(Параметр = name, Среднее = Mean, Медиана = Median, "CV, %" = CV) 
+
+AUC_Min0_tmax_stat <- pharm_par_stat %>%
+  filter(name == "AUC, г*мин/л" | name == "Min0, мин" | name == "tmax, мин") %>% 
+  mutate(Mean = round(Mean), Median = round(Median), SD = round(SD)) %>% 
+  rename(Параметр = name, Среднее = Mean, Медиана = Median, "CV, %" = CV) 
+  
+beta_stat %>% flextable::flextable()
+C0_Cmax_Vd_stat %>% flextable::flextable()
+AUC_Min0_tmax_stat %>% flextable::flextable() 
+
+```
+
+# Визуализируем выборочные распределения всех параметров из предыдущего пункта 
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE}
+par_list <- pharm_par %>%
+  select(-subject_id & -"Min0, мин") %>%
+  names()
+```
+
+
+```{r function_hist_by_par, fig.height=10, fig.width=20, message=FALSE, echo=FALSE, warning=FALSE}
+histogram_by_par <- function(par){
+  pharm_par %>% 
+  select(par) %>% 
+  ggplot(aes(x = .data[[par]])) +
+  stat_bin(bins = 20, fill = "#669bbc", color = "gray40")+
+  geom_boxplot(median.colour = "#003049", outlier.shape = 4, outlier.size = 5, outlier.colour = "#780000", linewidth = 1.1)+
+  stat_boxplot(geom = "errorbar", linewidth = 1.1, colour = "#003049")+
+  theme_custom + 
+  labs(y = "Количество")}
+
+
+
+gghist_list <- map(par_list, 
+                \(par) histogram_by_par(par))
+
+wrap_plots(gghist_list) + 
+  plot_annotation(title = "Визуализация выборочных распределений фармакокинетических параметров",
+  theme = theme(plot.title = element_text(size = 30, hjust = 0.5)))
+  
+```
