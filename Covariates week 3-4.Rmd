@@ -63,7 +63,24 @@ Wilkinson_IV_clean <- Wilkinson_IV %>%
 ```
 
 ```{r westal_old_clean}
-  
+
+#Все то же самое можно для young
+Vestal_1977_clean <- Vestal_1977_elderly %>% 
+rename_with(tolower) 
+
+Vestal_1977_clean <- Vestal_1977_clean %>% 
+  mutate(
+    cmax = cmax_mg_dl * 0.01, # перевод в г/л
+    route = case_when(
+      str_detect(str_to_lower(route), "iv") ~ "IV",
+      str_detect(str_to_lower(route), "po") ~ "PO"
+    ),
+    id_unified = paste("VE", route, subject_id, sep = "-")
+  ) %>% 
+  select(-cmax_mg_dl) %>% 
+  relocate(id_unified, .before = subject_id) %>% 
+  relocate(cmax, .before = dose_g_per_kg)
+
 ```
 
 ```{r vestal_young_clean}
