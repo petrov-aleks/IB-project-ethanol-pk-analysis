@@ -1,0 +1,94 @@
+---
+title: "Влияние на ФК этанола"
+author: "Alexey Gordeev"
+date: "`r Sys.Date()`"
+output:
+    html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages(library(tidyverse))
+library(patchwork)
+library(flextable)
+```
+
+## Настройки и стандартные функции
+
+```{r theme_set, echo=TRUE}
+theme_custom <-
+  theme(
+        axis.text.x = element_text(size = 20),
+        axis.text.y = element_text(size = 20, margin = margin(t = 15, unit = "pt")),
+        axis.title.x = element_text(size = 24),
+        axis.title.y = element_text(size = 24),
+        panel.background = element_rect(fill = "white", colour = "white"),
+        panel.grid = element_line(color = "gray85"),
+        legend.text = element_text(size=20),
+        legend.title = element_text(size=24),
+        plot.title = element_text(size = 30, margin = margin(b = 10, unit = "pt")),
+        plot.subtitle = element_text(size = 26, margin = margin(b = 15, unit = "pt"))
+  )
+
+standard_theme <- theme_bw() +
+  theme(plot.title = element_text(size = 30, hjust = 0.5),
+    plot.subtitle = element_text(size = 25, hjust = 0.5),
+    plot.caption = element_text(size = 20),
+    axis.title = element_text(size = 25),
+    axis.text.y = element_text(size = 20),
+    axis.text.x = element_text(size = 20),
+    legend.title = element_text(size = 20),
+    legend.text = element_text(size = 22),
+    strip.text = element_text(size = 22))
+
+theme_set(standard_theme)
+
+set_flextable_defaults(table.layout = "autofit",
+                       font.family = "Times New Roman")
+
+flex_default_fun <- function(x) {
+  x %>% 
+  theme_box() %>%
+  font(fontname = "Times New Roman", part = "all") %>% 
+  fontsize(size = 13, part = "header") %>% 
+  fontsize(size = 12, part = "body") %>% 
+  flextable::align(
+  i = 1,
+  j = NULL,
+  align = "center",
+  part = "header")
+}
+```
+
+# Чтение данных
+
+```{r}
+Ammon_1996 <- read_delim("data/raw/Ammon-1996.csv")
+
+Jones_1984 <- read_delim("data/raw/Jones-1984.csv")
+
+Emberger_2023 <- read_delim("data/raw/Thierauf-Emberger-2023.csv")
+
+Vestal_1977_e <- read_delim("data/raw/Vestal-1977-elderly.csv")
+
+Vestal_1977_y <- read_delim("data/raw/Vestal-1977-young.csv")
+
+Wilkinson_1976_IV <- read_delim("data/raw/Wilkinson-1976-IV.csv")
+
+Wilkinson_1976_PO <- read_delim("data/raw/Wilkinson-1976-PO.csv")
+
+Yelland_2008 <- read.csv("data/raw/Yelland-2008.csv")
+
+```
+
+# Предобработка Ammon-1996
+
+```{r}
+Ammon_1996
+
+```
+
