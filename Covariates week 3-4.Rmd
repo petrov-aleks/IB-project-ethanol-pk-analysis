@@ -621,3 +621,14 @@ cor_mat %>%
   ggcorr(., label = TRUE)
   
 ```
+
+```{r t-test в группах}
+t.test(log(AUC) ~ route, data = main_df) 
+
+t.test(log(AUC) ~ sex, data = main_df)
+
+t.test(Cmax ~ route, data = main_df)
+
+t.test(Cmax ~ food, data = main_df)
+```
+
