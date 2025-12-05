@@ -543,5 +543,5 @@ order_0_df <- main_df %>%
   bind_rows(WILK)
 # nrow(order_0_df)
 # length(unique(order_0_df$subject_id))
-order_1_df <- main_df %>% filter(dose_g_per_kg > 0.23)
+order_1_df <- main_df %>% filter(dose_g_per_kg < 0.23)
 ```
