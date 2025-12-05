@@ -38,17 +38,17 @@ set_flextable_defaults(table.layout = "autofit")
 
 ```{r ammon_clean}
 Ammon_1996_clean <- Ammon_1996 %>% 
-  mutate(subject_id = paste("A-IV", subject_id, occasion, sep = "-"))
+  mutate(case = paste(subject_id, occasion, sep = "-"))
 ```
 
 ```{r jones_clean}
 Jones_1984_clean <- Jones_1984 %>% 
-  mutate(subject_id = paste("J-PO", subject_id, sep = "-"))
+  mutate(subject_id = paste("J", subject_id, sep = "-"))
 ```
 
 ```{r yelland_clean}
 Yelland_2008_clean <- Yelland_2008 %>% 
-  mutate(subject_id = paste("Y-PO", subject_id, occasion, sep = "-"))
+  mutate(subject_id = paste("Y", subject_id, occasion, sep = "-"))
 ```
 
 ```{r emberger_clean}
@@ -303,19 +303,41 @@ Jones_1984_pk <- Jones_1984_clean %>%
                                         .$time_min,
                                         .$dose_g_per_kg))) %>% 
   unnest_wider(col = pharma) %>% 
-  select(-subject_data)  
+  select(-subject_data)
+
+Jones_1984_pk <- Jones_1984_clean %>% 
+  select(-c(time_min, conc_g_per_L)) %>% 
+  group_by(subject_id) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  right_join(Jones_1984_pk)
 ```
 
 ```{r ammon_pk}
 Ammon_1996_pk <- Ammon_1996_clean %>% 
   arrange(time_min) %>% 
-  nest(.by = subject_id, .key = "subject_data") %>% 
+  nest(.by = case, .key = "subject_data") %>% 
   mutate(pharma = purrr::map(subject_data,
                             ~pharma_fun(.$conc_g_per_L,
                                         .$time_min,
                                         .$dose_g_per_kg))) %>% 
   unnest_wider(col = pharma) %>% 
-  select(-subject_data)  
+  select(-subject_data) %>% 
+  separate(case, into = c("subject_id", "occasion"), sep = "-") %>% 
+  select(-occasion) %>% 
+  mutate(subject_id = subject_id %>% as.integer) %>% 
+  group_by(subject_id) %>% 
+  mutate(across(where(is.numeric), ~mean(.x))) %>% 
+  slice(1) %>% 
+  ungroup()
+
+Ammon_1996_pk <- Ammon_1996_clean %>%
+  select(-c(time_min, conc_g_per_L, occasion, case)) %>%
+  group_by(subject_id) %>%
+  slice(1) %>%
+  ungroup() %>%
+  right_join(Ammon_1996_pk) %>% 
+  mutate(subject_id = str_c("A-IV-", subject_id))
 ```
 
 ```{r yelland_pk}
@@ -327,7 +349,32 @@ Yelland_2008_pk <- Yelland_2008_clean %>%
                                         .$time_min,
                                         .$dose_g_per_kg))) %>% 
   unnest_wider(col = pharma) %>% 
-  select(-subject_data)  
+  select(-subject_data)
+
+# Ammon_1996_pk <- Ammon_1996_clean %>% 
+#   arrange(time_min) %>% 
+#   nest(.by = case, .key = "subject_data") %>% 
+#   mutate(pharma = purrr::map(subject_data,
+#                             ~pharma_fun(.$conc_g_per_L,
+#                                         .$time_min,
+#                                         .$dose_g_per_kg))) %>% 
+#   unnest_wider(col = pharma) %>% 
+#   select(-subject_data) %>% 
+#   separate(case, into = c("subject_id", "occasion"), sep = "-") %>% 
+#   select(-occasion) %>% 
+#   mutate(subject_id = subject_id %>% as.integer) %>% 
+#   group_by(subject_id) %>% 
+#   mutate(across(where(is.numeric), ~mean(.x))) %>% 
+#   slice(1) %>% 
+#   ungroup()
+# 
+# Ammon_1996_pk <- Ammon_1996_clean %>%
+#   select(-c(time_min, conc_g_per_L, occasion, case)) %>%
+#   group_by(subject_id) %>%
+#   slice(1) %>%
+#   ungroup() %>%
+#   right_join(Ammon_1996_pk) %>% 
+#   mutate(subject_id = str_c("A-IV-", subject_id))
 ```
 
 ```{r emberger_pk}
