@@ -527,16 +527,21 @@ main_df <- main_df %>%
 
 ```{r zero-first-orders-df}
 # Оставил только средние значения по визитам (независимость наблюдений соблюдена)
+WILK <- main_df %>% 
+  filter(study_id == "Wilkinson-1976-PO") %>% 
+  arrange(desc(dose_g_per_kg), .by_group = TRUE) %>% 
+  group_by(subject_id) %>% 
+  slice(1)
 order_0_df <- main_df %>%
-  filter(dose_g_per_kg >= 0.2) %>% 
   select(-c(Kel, contains("1_order"))) %>% 
-  # filter(!is.na(occasion)) %>% 
+  filter(study_id != "Wilkinson-1976-PO") %>%
   group_by(subject_id) %>% 
   mutate(across(c(Beta, C_0_0_order, V_d_0_order, AUC, Cmax, Tmax), ~mean(.x))) %>%
   slice(1) %>% 
   ungroup() %>% 
-  select(-occasion)
+  select(-occasion) %>% 
+  bind_rows(WILK)
 # nrow(order_0_df)
 # length(unique(order_0_df$subject_id))
-order_1_df <- main_df %>% filter(Cmax <= 0.23)
+order_1_df <- main_df %>% filter(dose_g_per_kg > 0.23)
 ```
