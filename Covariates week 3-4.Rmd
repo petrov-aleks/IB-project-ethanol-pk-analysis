@@ -582,4 +582,15 @@ ggplot(main_df_fac_long, aes(x = value)) +
 
 ```
 
+```{r Correlation, fig.height=8, fig.width=14, dpi = 200}
+pk_num <- main_df %>% 
+  select(where(is.numeric)) %>% 
+  select(-lbm_kg, -bsa_m2, -bh_cm, -bmi) #лишние убрал
+
+cor_mat <- cor(pk_num, use = "pairwise.complete.obs")
+
+cor_mat %>% 
+  ggcorr(., label = TRUE)
+  
+```
 
