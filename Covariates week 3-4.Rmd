@@ -516,6 +516,7 @@ Wilkinson_PO_pk <- Wilkinson_PO_clean %>%
   select(-case)
 rm(Wilkinson_PO_clean)
 ```
+
 # 4. Объединение датасетов
 
 ```{r join-all}
@@ -536,6 +537,31 @@ main_df <- main_df %>%
 # 0_order_df <-
 main_df %>% 
   summary()
+```
+
+```{r}
+main_df %>% 
+  select(-subject_id) %>% 
+  gtsummary::tbl_summary()
+```
+
+```         
+1.  ФК-параметры (endpoints)
+•   AUC, Cmax, 
+•   C0_0, C0_1
+•   Beta, Kel, 
+•   Tmax
+•   Vd_0,Vd_1
+2. Условия эксперимента
+•   Dose (g/kg)
+•   Route (IV/PO)
+•   Occasion (1/2/NA)
+•   Food (fed/fasted)
+•   Infusion_duration_min
+•   Study_id
+3.  Личные данные пациента
+•   WT, BH, BMI, BSA, LBM
+•   Sex, Age
 ```
 
 ```{r Графики распределения}
@@ -562,7 +588,8 @@ ggplot(num_long, aes(x = value)) +
   theme_bw() +
   labs(x = NULL, y = NULL)
 ```
-Можно прологорифмировать переменные с правосторонней ассиметрией  Kel, V_d_o, V_d_1, C_0_1_order
+
+Можно прологорифмировать переменные с правосторонней ассиметрией Kel, V_d_o, V_d_1, C_0_1_order
 
 ```{r Factor variables distribution}
 main_df_fac_long <- main_df %>% 
@@ -582,4 +609,14 @@ ggplot(main_df_fac_long, aes(x = value)) +
 
 ```
 
+```{r Correlation, fig.height=8, fig.width=14, dpi = 200}
+pk_num <- main_df %>% 
+  select(where(is.numeric)) %>% 
+  select(-lbm_kg, -bsa_m2, -bh_cm, -bmi) #лишние убрал
 
+cor_mat <- cor(pk_num, use = "pairwise.complete.obs")
+
+cor_mat %>% 
+  ggcorr(., label = TRUE)
+  
+```
