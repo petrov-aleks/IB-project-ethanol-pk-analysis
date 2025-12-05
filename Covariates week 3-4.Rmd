@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(flextable))
 library(patchwork)
+library(GGally)
 
 Jones_1984 <- read.csv("data/raw/Jones-1984.csv")
 Ammon_1996 <- read.csv("data/raw/Ammon-1996.csv")
@@ -38,13 +39,17 @@ set_flextable_defaults(table.layout = "autofit")
 
 ```{r ammon_clean}
 Ammon_1996_clean <- Ammon_1996 %>% 
-  mutate(case = paste(subject_id, occasion, sep = "-"))
+  mutate(case = paste(subject_id, occasion, sep = "-")) %>% 
+  mutate(route = route %>% str_remove_all(" infusion")) %>% 
+  rename(infusion_duration_min = duration_inf_min)
 rm(Ammon_1996)
 ```
 
 ```{r jones_clean}
 Jones_1984_clean <- Jones_1984 %>% 
-  mutate(subject_id = paste("J", subject_id, sep = "-"))
+  mutate(subject_id = paste("J", subject_id, sep = "-"),
+         sex = case_when(sex == "male" ~ "M",
+                         sex == "female" ~ "F"))
 rm(Jones_1984)
 ```
 
@@ -69,7 +74,7 @@ rm(Emberger_2023)
 ```{r wilkinson_iv_clean}
 Wilkinson_IV_clean <- Wilkinson_IV %>% 
   filter(!is.na(conc_g_per_L)) %>% 
-  mutate(case = paste(subject_id, sep = "-")) %>% 
+  mutate(route = route %>% str_remove_all(" infusion")) %>% 
   rename(wt_kg = WT_kg,
          sex = Sex)
 rm(Wilkinson_IV)
@@ -94,8 +99,8 @@ rename_with(tolower) %>%
   mutate(Cmax = Cmax / 100,
          route = case_when(
            str_detect(str_to_lower(route), "iv") ~ "IV",
-           str_detect(str_to_lower(route), "po") ~ "PO"
-           ))
+           str_detect(str_to_lower(route), "po") ~ "PO"),
+         subject_id = str_c("V-E-", subject_id))
 rm(Vestal_1977_elderly)
 ```
 
@@ -106,8 +111,8 @@ rename_with(tolower) %>%
   mutate(Cmax = Cmax / 100,
          route = case_when(
            str_detect(str_to_lower(route), "iv") ~ "IV",
-           str_detect(str_to_lower(route), "po") ~ "PO"
-           ))  
+           str_detect(str_to_lower(route), "po") ~ "PO"),
+         subject_id = str_c("V-Y-", subject_id))  
 rm(Vestal_1977_young)
 ```
 
@@ -175,7 +180,7 @@ Emberger_2023_clean %>%
 ggplot(Wilkinson_IV_clean, aes(x = time_min, y = conc_g_per_L)) +
   geom_line(aes(group = subject_id)) +
   scale_y_continuous(breaks = seq(0, 1.4, 0.1)) +
-  scale_x_continuous(breaks = seq(0, 420, 30)) +
+  scale_x_continuous(breaks = seq(0, 510, 30)) +
   # coord_cartesian(xlim = c(60, 420)) +
   labs(title = "Зависимость концентрации от времени",
        subtitle = "Индивидуальные кривые для каждого субъекта",
@@ -194,6 +199,7 @@ Wilkinson_PO_clean %>%
   scale_x_continuous(breaks = seq(0, 420, by = 50))+
   scale_y_continuous(breaks = seq(0, 1, by = 0.25))+
     labs(title = "Зависимость концентрации от времени", subtitle = "Индивидуальные кривые для каждого субъекта", x = "Время, мин", y = "Концентрация, г/л", color = "Визит", caption = "По данным Wilkinson-1976-PO")+
+  geom_hline(aes(yintercept = 0.2)) +
   theme(legend.position = "top")
 ```
 
@@ -201,15 +207,17 @@ Wilkinson_PO_clean %>%
 
 Время усреднено
 
-```{r ammon_mean_sd_plot, fig.width=24, fig.height=16, dpi=300}
+```{r ammon_mean_sd_plot, fig.width=24, fig.height=16, dpi=300, message=FALSE}
 Ammon_1996_clean %>% 
   group_by(case) %>%
   mutate(point_id = row_number() %>% as.factor) %>% 
-  ungroup() %>% 
-  group_by(point_id) %>% 
+  ungroup() %>%
+  mutate(occasion = occasion %>% as.factor) %>% 
+  group_by(occasion, point_id) %>% 
   summarise(conc_avg = mean(conc_g_per_L), conc_max = mean(conc_g_per_L) + sd(conc_g_per_L), conc_min = mean(conc_g_per_L) - sd(conc_g_per_L), time_min_avg = mean(time_min)) %>% 
+  ungroup() %>% 
   ggplot() +
-  geom_line(aes(x = time_min_avg, y = conc_avg)) +
+  geom_line(aes(x = time_min_avg, y = conc_avg, group = occasion, color = occasion)) +
   geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
   scale_x_continuous(breaks = seq(0, 400, by = 50)) +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
@@ -217,6 +225,7 @@ Ammon_1996_clean %>%
        subtitle = "Mean ± SD",
        x = "Время, мин",
        y = "Концентрация, г/л",
+       color = "Визит",
        caption = "По данным Ammon-1996")
 ```
 
@@ -239,15 +248,17 @@ Jones_1984_clean %>%
        caption = "По данным Jones-1984")
 ```
 
-```{r yelland_mean_sd_plot, fig.width=16, fig.height=9, dpi=300}
+```{r yelland_mean_sd_plot, fig.width=16, fig.height=9, dpi=300, message=FALSE}
 Yelland_2008_clean %>%
   group_by(case) %>%
   mutate(point_id = row_number() %>% as.factor) %>% 
-  ungroup() %>% 
-  group_by(point_id) %>% 
+  ungroup() %>%
+  mutate(occasion = occasion %>% as.factor) %>% 
+  group_by(occasion, point_id) %>% 
   summarise(conc_avg = mean(conc_g_per_L), conc_max = mean(conc_g_per_L) + sd(conc_g_per_L), conc_min = mean(conc_g_per_L) - sd(conc_g_per_L), time_min_avg = mean(time_min)) %>% 
+  ungroup() %>% 
   ggplot() +
-  geom_line(aes(x = time_min_avg, y = conc_avg)) +
+  geom_line(aes(x = time_min_avg, y = conc_avg, group = occasion, color = occasion)) +
   geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
   scale_x_continuous(breaks = seq(0, 400, by = 50)) +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
@@ -255,6 +266,7 @@ Yelland_2008_clean %>%
        subtitle = "Mean ± SD",
        x = "Время, мин",
        y = "Концентрация, г/л",
+       color = "Визит",
        caption = "По данным Yelland-2008")
 ```
 
@@ -298,7 +310,7 @@ Wilkinson_IV_clean %>%
 ```
 
 ```{r wilkinson_po__mean_sd_plot, fig.width=24, fig.height=16, dpi=300}
-Wilkinson_PO_clean %>% 
+Wilkinson_PO_clean %>%
   group_by(case) %>%
   mutate(point_id = row_number() %>% as.factor) %>% 
   ungroup() %>% 
@@ -389,6 +401,7 @@ Jones_1984_pk <- Jones_1984_clean %>%
   slice(1) %>% 
   ungroup() %>% 
   right_join(Jones_1984_pk)
+rm(Jones_1984_clean)
 ```
 
 ```{r ammon_pk}
@@ -402,20 +415,17 @@ Ammon_1996_pk <- Ammon_1996_clean %>%
   unnest_wider(col = pharma) %>% 
   select(-subject_data) %>% 
   separate(case, into = c("subject_id", "occasion"), sep = "-") %>% 
-  select(-occasion) %>% 
-  mutate(subject_id = subject_id %>% as.integer) %>% 
-  group_by(subject_id) %>% 
-  mutate(across(where(is.numeric), ~mean(.x))) %>% 
-  slice(1) %>% 
-  ungroup()
+  mutate(across(c(subject_id, occasion), ~as.integer(.x)))
 
 Ammon_1996_pk <- Ammon_1996_clean %>%
-  select(-c(time_min, conc_g_per_L, occasion, case)) %>%
-  group_by(subject_id) %>%
+  select(-c(time_min, conc_g_per_L)) %>%
+  group_by(case) %>%
   slice(1) %>%
   ungroup() %>%
   right_join(Ammon_1996_pk) %>% 
-  mutate(subject_id = str_c("A-IV-", subject_id))
+  mutate(subject_id = str_c("A-IV-", case)) %>% 
+  select(-case)
+rm(Ammon_1996_clean)
 ```
 
 ```{r yelland_pk}
@@ -428,21 +438,18 @@ Yelland_2008_pk <- Yelland_2008_clean %>%
                                         .$dose_g_per_kg))) %>% 
   unnest_wider(col = pharma) %>%
   select(-subject_data) %>%
-  separate(case, into = c("subject_id", "occasion"), sep = "-") %>%
-  select(-occasion) %>%
-  mutate(subject_id = subject_id %>% as.integer) %>%
-  group_by(subject_id) %>%
-  mutate(across(where(is.numeric), ~mean(.x))) %>%
-  slice(1) %>%
-  ungroup()
+  separate(case, into = c("subject_id", "occasion"), sep = "-") %>% 
+  mutate(across(c(subject_id, occasion), ~as.integer(.x)))
 
 Yelland_2008_pk <- Yelland_2008_clean %>%
-  select(-c(time_min, conc_g_per_L, occasion, case)) %>%
-  group_by(subject_id) %>%
+  select(-c(time_min, conc_g_per_L)) %>%
+  group_by(case) %>%
   slice(1) %>%
   ungroup() %>%
   right_join(Yelland_2008_pk) %>%
-  mutate(subject_id = str_c("Y-", subject_id))
+  mutate(subject_id = str_c("Y-", case)) %>% 
+  select(-case)
+rm(Yelland_2008_clean)
 ```
 
 ```{r emberger_pk}
@@ -462,6 +469,7 @@ Emberger_2023_pk <- Emberger_2023_clean %>%
   slice(1) %>% 
   ungroup() %>% 
   right_join(Emberger_2023_pk)
+rm(Emberger_2023_clean)
 ```
 
 ```{r wilkinson_iv_pk}
@@ -475,7 +483,14 @@ Wilkinson_IV_pk <- Wilkinson_IV_clean %>%
   unnest_wider(col = pharma) %>% 
   select(-subject_data)
 
-
+Wilkinson_IV_pk <- Wilkinson_IV_clean %>% 
+  select(-c(time_min, conc_g_per_L)) %>% 
+  group_by(subject_id) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  right_join(Wilkinson_IV_pk) %>% 
+  mutate(subject_id = str_c("W-IV-", subject_id))
+rm(Wilkinson_IV_clean)
 ```
 
 ```{r wilkinson_po_pk}
@@ -489,24 +504,79 @@ Wilkinson_PO_pk <- Wilkinson_PO_clean %>%
   unnest_wider(col = pharma) %>% 
   select(-subject_data) %>% 
   separate(case, into = c("subject_id", "occasion"), sep = "-") %>% 
-  select(-occasion) %>% 
-  mutate(subject_id = subject_id %>% as.integer) %>% 
-  group_by(subject_id) %>% 
-  mutate(across(where(is.numeric), ~mean(.x))) %>% 
-  slice(1) %>% 
-  ungroup()
+  mutate(across(c(subject_id, occasion), ~as.integer(.x)))
 
 Wilkinson_PO_pk <- Wilkinson_PO_clean %>%
-  select(-c(time_min, conc_g_per_L, occasion, case)) %>%
-  group_by(subject_id) %>%
+  select(-c(time_min, conc_g_per_L)) %>%
+  group_by(case) %>%
   slice(1) %>%
   ungroup() %>%
   right_join(Wilkinson_PO_pk) %>% 
-  mutate(subject_id = str_c("W-PO-", subject_id))
+  mutate(subject_id = str_c("W-PO-", subject_id)) %>% 
+  select(-case)
+rm(Wilkinson_PO_clean)
 ```
 # 4. Объединение датасетов
 
-```{r}
+```{r join-all}
+main_df <- bind_rows(Ammon_1996_pk,
+                     Emberger_2023_pk,
+                     Jones_1984_pk,
+                     Wilkinson_IV_pk,
+                     Wilkinson_PO_pk,
+                     Yelland_2008_pk,
+                     Vestal_1977_e_pk,
+                     Vestal_1977_y_pk)
 
+main_df <- main_df %>% 
+  mutate(across(c(where(is.character), occasion, infusion_duration_min, -subject_id), ~as.factor(.x)))
+```
+
+```{r zero-order-df}
+# 0_order_df <-
+main_df %>% 
+  summary()
+```
+
+```{r Графики распределения}
+
+main_df_long <- main_df %>% 
+  select(where(is.numeric)) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+ggplot(num_long, aes(x = value)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  labs(x = NULL, y = NULL)
+```
+```{r Density plot}
+ggplot(num_long, aes(x = value)) +
+  geom_density(na.rm = TRUE) +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  labs(x = NULL, y = NULL)
+```
+Можно прологорифмировать переменные с правосторонней ассиметрией  Kel, V_d_o, V_d_1, C_0_1_order
+
+```{r Factor variables distribution}
+main_df_fac_long <- main_df %>% 
+  select(where(is.factor)) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+ggplot(main_df_fac_long, aes(x = value)) +
+  geom_bar() +
+  facet_wrap(~ variable, scales = "free_x") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = NULL, y = NULL)
 ```
 
