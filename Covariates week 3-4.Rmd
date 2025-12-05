@@ -412,16 +412,14 @@ Ammon_1996_pk <- Ammon_1996_clean %>%
                                         .$time_min,
                                         .$dose_g_per_kg))) %>% 
   unnest_wider(col = pharma) %>% 
-  select(-subject_data) %>% 
-  separate(case, into = c("subject_id", "occasion"), sep = "-") %>% 
-  mutate(across(c(subject_id, occasion), ~as.integer(.x)))
+  select(-subject_data)
 
 Ammon_1996_pk <- Ammon_1996_clean %>%
   select(-c(time_min, conc_g_per_L)) %>%
   group_by(case) %>%
   slice(1) %>%
   ungroup() %>%
-  right_join(Ammon_1996_pk) %>% 
+  right_join(Ammon_1996_pk, by = join_by(case)) %>% 
   mutate(subject_id = str_c("A-IV-", case)) %>% 
   select(-case)
 rm(Ammon_1996_clean)
@@ -436,16 +434,14 @@ Yelland_2008_pk <- Yelland_2008_clean %>%
                                         .$time_min,
                                         .$dose_g_per_kg))) %>% 
   unnest_wider(col = pharma) %>%
-  select(-subject_data) %>%
-  separate(case, into = c("subject_id", "occasion"), sep = "-") %>% 
-  mutate(across(c(subject_id, occasion), ~as.integer(.x)))
+  select(-subject_data)
 
 Yelland_2008_pk <- Yelland_2008_clean %>%
   select(-c(time_min, conc_g_per_L)) %>%
   group_by(case) %>%
   slice(1) %>%
   ungroup() %>%
-  right_join(Yelland_2008_pk) %>%
+  right_join(Yelland_2008_pk, by = join_by(case)) %>%
   mutate(subject_id = str_c("Y-", case)) %>% 
   select(-case)
 rm(Yelland_2008_clean)
@@ -501,16 +497,14 @@ Wilkinson_PO_pk <- Wilkinson_PO_clean %>%
                                         .$time_min,
                                         .$dose_g_per_kg))) %>% 
   unnest_wider(col = pharma) %>% 
-  select(-subject_data) %>% 
-  separate(case, into = c("subject_id", "occasion"), sep = "-") %>% 
-  mutate(across(c(subject_id, occasion), ~as.integer(.x)))
+  select(-subject_data)
 
 Wilkinson_PO_pk <- Wilkinson_PO_clean %>%
   select(-c(time_min, conc_g_per_L)) %>%
   group_by(case) %>%
   slice(1) %>%
   ungroup() %>%
-  right_join(Wilkinson_PO_pk) %>% 
+  right_join(Wilkinson_PO_pk, by = join_by(case)) %>% 
   mutate(subject_id = str_c("W-PO-", subject_id)) %>% 
   select(-case)
 rm(Wilkinson_PO_clean)
@@ -533,6 +527,8 @@ main_df <- main_df %>%
 
 ```{r zero-order-df}
 # 0_order_df <-
-main_df %>% 
+main_df %>%
   summary()
+
+main_df %>% filter(Cmax <= 0.3)
 ```
