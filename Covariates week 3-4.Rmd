@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(flextable))
 library(patchwork)
+library(GGally)
 
 Jones_1984 <- read.csv("data/raw/Jones-1984.csv")
 Ammon_1996 <- read.csv("data/raw/Ammon-1996.csv")
@@ -509,6 +510,7 @@ Wilkinson_PO_pk <- Wilkinson_PO_clean %>%
   select(-case)
 rm(Wilkinson_PO_clean)
 ```
+
 # 4. Объединение датасетов
 
 ```{r join-all}
@@ -545,3 +547,97 @@ order_0_df <- main_df %>%
 # length(unique(order_0_df$subject_id))
 order_1_df <- main_df %>% filter(dose_g_per_kg < 0.23)
 ```
+
+```{r}
+main_df %>% 
+  select(-subject_id) %>% 
+  gtsummary::tbl_summary()
+```
+
+```         
+1.  ФК-параметры (endpoints)
+•   AUC, Cmax, 
+•   C0_0, C0_1
+•   Beta, Kel, 
+•   Tmax
+•   Vd_0,Vd_1
+2. Условия эксперимента
+•   Dose (g/kg)
+•   Route (IV/PO)
+•   Occasion (1/2/NA)
+•   Food (fed/fasted)
+•   Infusion_duration_min
+•   Study_id
+3.  Личные данные пациента
+•   WT, BH, BMI, BSA, LBM
+•   Sex, Age
+```
+
+```{r Графики распределения}
+
+main_df_long <- main_df %>% 
+  select(where(is.numeric)) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+ggplot(main_df_long, aes(x = value)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  labs(x = NULL, y = NULL)
+```
+
+```{r Density plot}
+ggplot(main_df_long, aes(x = value)) +
+  geom_density(na.rm = TRUE) +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  labs(x = NULL, y = NULL)
+```
+
+Можно прологорифмировать переменные с правосторонней ассиметрией Kel, V_d_o, V_d_1, C_0_1_order
+
+```{r Factor variables distribution}
+main_df_fac_long <- main_df %>% 
+  select(where(is.factor)) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+ggplot(main_df_fac_long, aes(x = value)) +
+  geom_bar() +
+  facet_wrap(~ variable, scales = "free_x") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = NULL, y = NULL)
+
+```
+
+```{r Correlation, fig.height=8, fig.width=14, dpi = 200}
+pk_num <- main_df %>% 
+  select(where(is.numeric)) %>% 
+  select(-lbm_kg, -bsa_m2, -bh_cm, -bmi) #лишние убрал
+
+
+cor_mat <- cor(pk_num, use = "pairwise.complete.obs")
+
+cor_mat %>% 
+  ggcorr(., label = TRUE)
+  
+```
+
+```{r t-test в группах}
+t.test(log(AUC) ~ route, data = main_df) 
+
+t.test(log(AUC) ~ sex, data = main_df)
+
+t.test(Cmax ~ route, data = main_df)
+
+t.test(Cmax ~ food, data = main_df)
+```
+
