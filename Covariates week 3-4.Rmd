@@ -578,5 +578,11 @@ ggplot(main_df_fac_long, aes(x = value)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(x = NULL, y = NULL)
+
 ```
 
+```{r zero-order-df}
+# 0_order_df <-
+main_df %>% 
+  summary()
+```
