@@ -641,3 +641,28 @@ t.test(Cmax ~ route, data = main_df)
 t.test(Cmax ~ food, data = main_df)
 ```
 
+Проверяем гипотезу о различиях групп по категориям route и sex.
+
+```{r t-test 0_order route_sex}
+t.test(Beta ~ route, data = order_0_df) 
+
+t.test(Beta ~ sex, data = order_0_df)
+
+t.test(V_d_0_order ~ route, data = order_0_df) 
+
+t.test(V_d_0_order ~ sex, data = order_0_df)
+
+t.test(log(AUC) ~ route, data = order_0_df) 
+
+t.test(log(AUC) ~ sex, data = order_0_df)
+
+t.test(Cmax ~ route, data = order_0_df)
+
+t.test(Cmax ~ sex, data = order_0_df)
+
+t.test(Tmax ~ route, data = order_0_df)
+
+t.test(Tmax ~ sex, data = order_0_df)
+```
+
+Результаты: Группы по способу введения различаются по всем фк параметрам. Группы по полу различаются по всем фк-параметрам кроме Tmax.
