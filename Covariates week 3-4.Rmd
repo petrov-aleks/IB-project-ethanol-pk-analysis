@@ -11,7 +11,9 @@ suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(flextable))
 library(patchwork)
 library(GGally)
+```
 
+```{r data_upload}
 Jones_1984 <- read.csv("data/raw/Jones-1984.csv")
 Ammon_1996 <- read.csv("data/raw/Ammon-1996.csv")
 Yelland_2008 <- read.csv("data/raw/Yelland-2008.csv")
@@ -20,7 +22,9 @@ Wilkinson_IV <- read.csv("data/raw/Wilkinson-1976-IV.csv")
 Wilkinson_PO <- read.csv("data/raw/Wilkinson-1976-PO.csv")
 Vestal_1977_elderly <- read.csv("data/raw/Vestal-1977-elderly.csv")
 Vestal_1977_young <- read.csv("data/raw/Vestal-1977-young.csv")
+```
 
+```{r theme_set}
 standard_theme <- theme_bw() +
   theme(plot.title = element_text(size = 30, hjust = 0.5),
     plot.subtitle = element_text(size = 25, hjust = 0.5),
@@ -129,7 +133,7 @@ Ammon_1996_clean %>%
   facet_wrap(subject_id~.)+
   scale_x_continuous(breaks = seq(0, 420, by = 50))+
   scale_y_continuous(breaks = seq(0, 1, by = 0.25))+
-    labs(title = "Зависимость концентрации от времени", subtitle = "Индивидуальные кривые для каждого субъекта", x = "Время, мин", y = "Концентрация, г/л", color = "Визит", caption = "Ammon-1996")+
+    labs(title = "Зависимость концентрации от времени", subtitle = "Индивидуальные кривые для каждого субъекта", x = "Время, мин", y = "Концентрация, г/л", color = "Визит", caption = "По данным Ammon-1996")+
   theme(legend.position = "top")
 ```
 
@@ -141,7 +145,7 @@ ggplot(Jones_1984_clean, aes(x = time_min, y = conc_g_per_L)) +
   # coord_cartesian(xlim = c(60, 420)) +
   labs(title = "Зависимость концентрации от времени",
        subtitle = "Индивидуальные кривые для каждого субъекта",
-       caption = "Jones-1984",
+       caption = "По данным Jones-1984",
        x = "Время, мин",
        y = "Концентрация, г/л")
 ```
@@ -155,7 +159,7 @@ Yelland_2008_clean %>%
   facet_wrap(subject_id~.)+
   scale_x_continuous(breaks = seq(0, 420, by = 50))+
   scale_y_continuous(breaks = seq(0, 1, by = 0.25))+
-    labs(title = "Зависимость концентрации от времени", subtitle = "Индивидуальные кривые для каждого субъекта", x = "Время, мин", y = "Концентрация, г/л", color = "Визит", caption = "Yelland-2008")+
+    labs(title = "Зависимость концентрации от времени", subtitle = "Индивидуальные кривые для каждого субъекта", x = "Время, мин", y = "Концентрация, г/л", color = "Визит", caption = "По данным Yelland-2008")+
   theme(legend.position = "top")
 ```
 
@@ -184,7 +188,7 @@ ggplot(Wilkinson_IV_clean, aes(x = time_min, y = conc_g_per_L)) +
   # coord_cartesian(xlim = c(60, 420)) +
   labs(title = "Зависимость концентрации от времени",
        subtitle = "Индивидуальные кривые для каждого субъекта",
-       caption = "Wilkinson-1976-IV",
+       caption = "По данным Wilkinson-1976-IV",
        x = "Время, мин",
        y = "Концентрация, г/л")
 ```
@@ -548,6 +552,8 @@ order_0_df <- main_df %>%
 order_1_df <- main_df %>% filter(dose_g_per_kg < 0.23)
 ```
 
+
+## 4.1 Эксплораторный анализ
 ```{r}
 main_df %>% 
   select(-subject_id) %>% 
@@ -573,7 +579,7 @@ main_df %>%
 •   Sex, Age
 ```
 
-```{r Графики распределения}
+```{r Графики распределения, error=FALSE, warning=FALSE, fig.width=12, fig.height=8, dpi=300}
 
 main_df_long <- main_df %>% 
   select(where(is.numeric)) %>% 
@@ -590,7 +596,7 @@ ggplot(main_df_long, aes(x = value)) +
   labs(x = NULL, y = NULL)
 ```
 
-```{r Density plot}
+```{r density plot, fig.width=12, fig.height=8, dpi=300}
 ggplot(main_df_long, aes(x = value)) +
   geom_density(na.rm = TRUE) +
   facet_wrap(~ variable, scales = "free") +
@@ -598,7 +604,7 @@ ggplot(main_df_long, aes(x = value)) +
   labs(x = NULL, y = NULL)
 ```
 
-Можно прологорифмировать переменные с правосторонней ассиметрией Kel, V_d_o, V_d_1, C_0_1_order
+Можно прологарифмировать переменные с правосторонней ассимметрией Kel, V_d_o, V_d_1, C_0_1_order
 
 ```{r Factor variables distribution}
 main_df_fac_long <- main_df %>% 
@@ -617,6 +623,111 @@ ggplot(main_df_fac_long, aes(x = value)) +
   labs(x = NULL, y = NULL)
 
 ```
+
+```{r theme_custom}
+theme_custom <- theme(
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 14),
+    plot.title = element_text(size = 20, hjust = 0.5),
+    plot.subtitle = element_text(size = 16, hjust = 0.5),
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 14),
+    panel.background = element_rect(fill = "white"), 
+    panel.grid = element_blank()
+  )
+
+gender_colours <- c(
+      "M" = "#8694AC",
+      "F" = "#f28482"
+    )
+
+gender_fill <- scale_fill_manual(
+    name = "Sex",
+    values = gender_colours
+  )
+
+
+gender_color <- scale_colour_manual(
+    name = "Sex",
+    values = gender_colours
+  )
+```
+
+
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p1 <- main_df %>% 
+  filter(!is.na(sex)) %>% 
+  ggplot(aes(x = sex, y = Tmax)) +
+  geom_violin(aes(fill = sex)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  gender_fill
+
+p2 <- main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = Tmax, fill = sex), colour = "gray40") + 
+  theme_custom + 
+  gender_fill
+
+p1 + p2 + plot_annotation(title = "Распределение Tmax по полу", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p3 <- main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot(aes(x = sex, y = Cmax)) +
+  geom_violin(aes(fill = sex)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  gender_fill
+
+p4 <-  main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = Cmax, fill = sex), colour = "gray40") + 
+  theme_custom + 
+  gender_fill
+
+p3 + p4 + plot_annotation(title = "Распределение Cmax по полу", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p5 <- main_df %>% 
+  filter(!is.na(sex)) %>% 
+  ggplot(aes(x = sex, y = AUC)) +
+  geom_violin(aes(fill = sex)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  gender_fill
+
+p6 <- main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = AUC, fill = sex), colour = "gray40") + 
+  theme_custom + 
+  gender_fill
+
+p5 + p6 + plot_annotation(title = "Распределение AUC по полу", theme = theme(plot.title = element_text(size = 20)))
+```
+
 
 ```{r Correlation, fig.height=8, fig.width=14, dpi = 200}
 pk_num <- main_df %>% 
@@ -692,3 +803,5 @@ t.test(Tmax ~ sex, data = order_0_df)
 ```
 
 Результаты: Группы по способу введения различаются по всем фк параметрам. Группы по полу различаются по всем фк-параметрам кроме Tmax.
+
+# 5. Основной регрессионный анализ
