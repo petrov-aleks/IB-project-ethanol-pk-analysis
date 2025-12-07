@@ -11,6 +11,11 @@ suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(flextable))
 library(patchwork)
 library(GGally)
+library(regressinator)
+library(broom)
+library(gridExtra)
+library(grid)
+library(ggfortify)
 ```
 
 ```{r data_upload}
@@ -368,6 +373,11 @@ pharma_fun <- function(conc, t, dose, k = 1) {
   
   # Подсчёт Tmax
   tmax <- t[first(which.max(conc))]
+  
+  # Подсчёт CL
+  cl = dose/AUC #l/(kg*min)
+  # V = CL/Kel 
+  
   return(list(Beta = Beta,
               Kel = Kel,
               C_0_0_order = C_0_0_order,
@@ -376,7 +386,8 @@ pharma_fun <- function(conc, t, dose, k = 1) {
               V_d_1_order = V_d_1_order,
               AUC = AUC,
               Cmax = cmax,
-              Tmax = tmax))
+              Tmax = tmax,
+              CL = cl))
 }
 
 stat_ph <- list(
@@ -567,6 +578,7 @@ main_df %>%
 •   Beta, Kel, 
 •   Tmax
 •   Vd_0,Vd_1
+•   CL
 2. Условия эксперимента
 •   Dose (g/kg)
 •   Route (IV/PO)
@@ -605,6 +617,25 @@ ggplot(main_df_long, aes(x = value)) +
 ```
 
 Можно прологарифмировать переменные с правосторонней ассимметрией Kel, V_d_o, V_d_1, C_0_1_order
+
+```{r density_plot_log, fig.width=12, fig.height=8, dpi=300}
+
+main_df_log_long <- main_df %>% 
+  mutate(across(c(Kel, V_d_0_order, V_d_1_order, C_0_1_order, AUC, CL), function(x) log(x))) %>% 
+  select(where(is.numeric)) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+ggplot(main_df_log_long, aes(x = value)) +
+  geom_density(na.rm = TRUE) +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  labs(x = NULL, y = NULL)
+```
+
 
 ```{r Factor variables distribution}
 main_df_fac_long <- main_df %>% 
@@ -805,3 +836,56 @@ t.test(Tmax ~ sex, data = order_0_df)
 Результаты: Группы по способу введения различаются по всем фк параметрам. Группы по полу различаются по всем фк-параметрам кроме Tmax.
 
 # 5. Основной регрессионный анализ
+
+```{r fit_lm}
+fit1 <- lm(log(Cmax) ~ dose_g_per_kg, main_df)
+fit2 <- lm(log(Cmax) ~ age, main_df)
+fit3 <- lm(log(Cmax) ~ wt_kg, main_df)
+fit4 <- lm(log(Cmax) ~ sex, main_df)
+fit5 <- lm(log(Cmax) ~ study_id, main_df)
+
+# summary(fit1)
+# summary(fit2)
+```
+
+
+```{r, fig.width=16, fig.height=12, warning=FALSE, message=FALSE}
+# pfit1 <- augment(fit1) %>% 
+#   ggplot(aes(x = .fitted, y = .resid)) +
+#   geom_point() +
+#   geom_smooth(se = FALSE)
+# 
+# pfit2 <- augment(fit2) %>% 
+#   ggplot(aes(x = .fitted, y = .resid)) +
+#   geom_point() +
+#   geom_smooth(se = FALSE) 
+# 
+# pfit3 <- augment(fit3) %>% 
+#   ggplot(aes(x = .fitted, y = .resid)) +
+#   geom_point() +
+#   geom_smooth(se = FALSE) 
+# 
+# pfit4 <- augment(fit4) %>% 
+#   ggplot(aes(x = .fitted, y = .resid)) +
+#   geom_point() +
+#   geom_smooth(se = FALSE)
+# 
+# pfit5 <- augment(fit5) %>% 
+#   ggplot(aes(x = .fitted, y = .resid)) +
+#   geom_point() +
+#   geom_smooth(se = FALSE)
+# 
+# 
+# grid.arrange(pfit1, pfit2, pfit3, pfit4, pfit5, ncol = 2, top = textGrob("Diagnosis of linearity by fitted value", gp = gpar(fontsize = 24, fontface = "bold")))
+```
+
+
+```{r}
+autoplot(fit1) +theme_minimal() # dose
+autoplot(fit2) +theme_minimal() # age
+autoplot(fit3) +theme_minimal() # wt_kg
+autoplot(fit4) +theme_minimal() # sex
+autoplot(fit5) +theme_minimal() # study_id
+
+```
+
