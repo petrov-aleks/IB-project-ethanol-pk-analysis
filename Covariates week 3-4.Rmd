@@ -11,6 +11,7 @@ suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(flextable))
 library(patchwork)
 library(GGally)
+library(easystats)
 ```
 
 ```{r data_upload}
@@ -803,5 +804,82 @@ t.test(Tmax ~ sex, data = order_0_df)
 ```
 
 Результаты: Группы по способу введения различаются по всем фк параметрам. Группы по полу различаются по всем фк-параметрам кроме Tmax.
-
 # 5. Основной регрессионный анализ
+
+строим модели по общему датасету order_0_df, одну модель по параметрам, которые есть у всех "датасетов", и еще можно другие модели, добавляя возраст и/или пол и т д
+
++ еще одну модель , в которую добавить еще и площадью тела и сухую массу тела
+
+Примерные спецификации моделей
+1) log(AUC) ~ dose + route + food + site + study (?)
+2) ~ ... + пол + возраст
+3) ~ площадь поверхности тела + сухая масса тела
+У каждого свой показатель, можно попробовать включить взаимодействия переменных
+```{r С_0_0_order lm1 v1  }
+order_0_df
+C_0_0_lm1_v1 <- lm(log(C_0_0_order) ~ dose_g_per_kg + route + food + site + study_id, data = order_0_df)
+summary(C_0_0_lm1_v1)
+check_model(C_0_0_lm1_v1)
+
+```
+Adjusted R-squared:  0.8286 
+
+1) Posterior Predictive Check
+
+Линии плотности моделей и наблюдений почти совпадают. Это означает, что модель в целом адекватно воспроизводит распределение C_0_0
+
+2) Linearity
+
+зелёная сглаженная линия близка к горизонтали, но виден лёгкий систематический тренд на правом конце (при больших fitted). 
+Сильного нарушения линейности нет. возможна не хватает эффекта взаимодействия или нелинейного эффекта одного из предикторов.
+
+3) Homogeneity of variance
+Гетероскедастичности нет
+
+4) Influential observations
+
+видны несколько наблюдений, которые помечены номерами (78, 92, 62, 95, 67), заметнее всех
+
+5) Normality of residuals
+
+Q–Q график выглядит приемлемо
+
+6) Collinearty VIF
+dose_g_per_kg, route, study_id - High ≥ 10
+
+Попробую убрать лишние показатели, например в каждом исследовании 1 уровень food
+
+```{r r С_0_0_order lm1 var1.1 }
+C_0_0_lm1_v2 <- lm(log(C_0_0_order) ~ study_id, data = order_0_df)
+summary(C_0_0_lm1_v2)
+check_model(C_0_0_lm1_v2)
+
+```
+Adjusted R-squared:  0.8277
+Убрали коллинеарность
+
+```{r С_0_0_order lm2 v1 v2  part1}
+order_0_df
+C_0_0_lm2_v1 <- lm(log(C_0_0_order) ~ study_id + sex+age , data = order_0_df)
+summary(C_0_0_lm2_v1) #sex и age зависит от study_id, нет смысла смотреть по всем данным
+
+
+df_sa <- order_0_df %>% filter(!is.na(sex), !is.na(age), !is.na(C_0_0_order)) #по факту вилкинсон и Thierauf, 18 наблюдений
+
+df_sa <- df_sa %>%  mutate(bmi = wt_kg / (bh_cm/100)^2, 
+         bsa_m2 = sqrt(bh_cm * wt_kg / 3600)) #bsa в модели заходит лучше
+
+C_0_0_lm2_v2 <- lm(log(C_0_0_order) ~ log(dose_g_per_kg) + bsa_m2 + sex, data = df_sa) 
+summary(C_0_0_lm2_v2)
+check_model(C_0_0_lm2_v2)
+```
+Визуально выглядит лучше, но предикторов очень много, посчитал bmi и bsa, попробовал по всякому включить в модель
+
+
+```{r С_0_0_order lm3 v1}
+C_0_0_lm3_v1 <- lm(log(C_0_0_order) ~ bsa_m2 , data = order_0_df)
+
+summary(C_0_0_lm3_v1)
+check_model(C_0_0_lm3_v1)
+```
+
