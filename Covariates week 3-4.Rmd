@@ -16,6 +16,7 @@ library(broom)
 library(gridExtra)
 library(grid)
 library(ggfortify)
+library(performance)
 ```
 
 ```{r data_upload}
@@ -654,6 +655,7 @@ ggplot(main_df_fac_long, aes(x = value)) +
   labs(x = NULL, y = NULL)
 
 ```
+## 4.2 Боксплоты
 
 ```{r theme_custom}
 theme_custom <- theme(
@@ -673,9 +675,39 @@ gender_colours <- c(
       "F" = "#f28482"
     )
 
+route_colours <- c(
+      "IV" = "#DDB892",
+      "PO" = "#BAC893"
+    )
+
+food_colours <- c(
+      "fed" = "#FFB35C",
+      "fasted" = "#CDE8F4"
+    )
+
+site_colours <- c(
+      "capillary" = "#FE3448",
+      "venous" = "#7C7F65"
+    )
+
 gender_fill <- scale_fill_manual(
     name = "Sex",
     values = gender_colours
+  )
+
+route_fill <- scale_fill_manual(
+    name = "Route",
+    values = route_colours
+  )
+
+food_fill <- scale_fill_manual(
+    name = "Food",
+    values = food_colours
+  )
+
+site_fill <- scale_fill_manual(
+    name = "Site",
+    values = site_colours
   )
 
 
@@ -759,6 +791,202 @@ p6 <- main_df %>%
 p5 + p6 + plot_annotation(title = "Распределение AUC по полу", theme = theme(plot.title = element_text(size = 20)))
 ```
 
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p7 <- main_df %>% 
+  ggplot(aes(x = route, y = Tmax)) +
+  geom_violin(aes(fill = route)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom +
+  route_fill
+
+p8 <- main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Tmax, fill = route), colour = "gray40") + 
+  theme_custom +
+  route_fill
+
+p7 + p8 + plot_annotation(title = "Распределение Tmax по способу введения", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p9 <- main_df %>% 
+  ggplot(aes(x = route, y = Cmax)) +
+  geom_violin(aes(fill = route)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  route_fill
+
+p10 <-  main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Cmax, fill = route), colour = "gray40") + 
+  theme_custom + 
+  route_fill
+
+p9 + p10 + plot_annotation(title = "Распределение Cmax по способу введения", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p11 <- main_df %>% 
+  ggplot(aes(x = route, y = AUC)) +
+  geom_violin(aes(fill = route)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  route_fill
+
+p12 <- main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = AUC, fill = route), colour = "gray40") + 
+  theme_custom + 
+  route_fill
+
+p11 + p12 + plot_annotation(title = "Распределение AUC по способу введения", theme = theme(plot.title = element_text(size = 20)))
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p13 <- main_df %>% 
+  ggplot(aes(x = food, y = Tmax)) +
+  geom_violin(aes(fill = food)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom +
+  food_fill
+
+p14 <- main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Tmax, fill = food), colour = "gray40") + 
+  theme_custom +
+  food_fill
+
+p13 + p14 + plot_annotation(title = "Распределение Tmax по статусу приёма пищи", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p15 <- main_df %>% 
+  ggplot(aes(x = food, y = Cmax)) +
+  geom_violin(aes(fill = food)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  food_fill
+
+p16 <-  main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Cmax, fill = food), colour = "gray40") + 
+  theme_custom + 
+  food_fill
+
+p15 + p16 + plot_annotation(title = "Распределение Cmax по статусу приёма пищи", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p17 <- main_df %>% 
+  ggplot(aes(x = food, y = AUC)) +
+  geom_violin(aes(fill = food)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  food_fill
+
+p18 <- main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = AUC, fill = food), colour = "gray40") + 
+  theme_custom + 
+  food_fill
+
+p17 + p18 + plot_annotation(title = "Распределение AUC по статусу приёма пищи", theme = theme(plot.title = element_text(size = 20)))
+```
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p19 <- main_df %>% 
+  ggplot(aes(x = site, y = Tmax)) +
+  geom_violin(aes(fill = site)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom +
+  site_fill
+
+p20 <- main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Tmax, fill = site), colour = "gray40") + 
+  theme_custom +
+  site_fill
+
+p19 + p20 + plot_annotation(title = "Распределение Tmax по забору крови", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p21 <- main_df %>% 
+  ggplot(aes(x = site, y = Cmax)) +
+  geom_violin(aes(fill = site)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  site_fill
+
+p22 <-  main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Cmax, fill = site), colour = "gray40") + 
+  theme_custom + 
+  site_fill
+
+p21 + p22 + plot_annotation(title = "Распределение Cmax по забору крови", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p23 <- main_df %>% 
+  ggplot(aes(x = site, y = AUC)) +
+  geom_violin(aes(fill = site)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  site_fill
+
+p24 <-  main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = AUC, fill = site), colour = "gray40") + 
+  theme_custom + 
+  site_fill
+
+p23 + p24 + plot_annotation(title = "Распределение AUC по забору крови", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
 
 ```{r Correlation, fig.height=8, fig.width=14, dpi = 200}
 pk_num <- main_df %>% 
@@ -837,55 +1065,87 @@ t.test(Tmax ~ sex, data = order_0_df)
 
 # 5. Основной регрессионный анализ
 
+
+## AUC
+
+### Аддитивная модель c основными переменными (доза, способ введения, способ забора крови)
+
 ```{r fit_lm}
-fit1 <- lm(log(Cmax) ~ dose_g_per_kg, main_df)
-fit2 <- lm(log(Cmax) ~ age, main_df)
-fit3 <- lm(log(Cmax) ~ wt_kg, main_df)
-fit4 <- lm(log(Cmax) ~ sex, main_df)
-fit5 <- lm(log(Cmax) ~ study_id, main_df)
+fit_AUC_mod <- lm(log(AUC) ~ dose_g_per_kg + route + site, order_0_df) #+food
+fit_AUC_submod <- lm(log(AUC) ~ 1, order_0_df)
 
-# summary(fit1)
-# summary(fit2)
-```
+#broom::tidy(fit_AUC_mod, conf.int = TRUE)
+#broom::tidy(fit_AUC_submod, conf.int = TRUE)
 
 
-```{r, fig.width=16, fig.height=12, warning=FALSE, message=FALSE}
-# pfit1 <- augment(fit1) %>% 
-#   ggplot(aes(x = .fitted, y = .resid)) +
-#   geom_point() +
-#   geom_smooth(se = FALSE)
-# 
-# pfit2 <- augment(fit2) %>% 
-#   ggplot(aes(x = .fitted, y = .resid)) +
-#   geom_point() +
-#   geom_smooth(se = FALSE) 
-# 
-# pfit3 <- augment(fit3) %>% 
-#   ggplot(aes(x = .fitted, y = .resid)) +
-#   geom_point() +
-#   geom_smooth(se = FALSE) 
-# 
-# pfit4 <- augment(fit4) %>% 
-#   ggplot(aes(x = .fitted, y = .resid)) +
-#   geom_point() +
-#   geom_smooth(se = FALSE)
-# 
-# pfit5 <- augment(fit5) %>% 
-#   ggplot(aes(x = .fitted, y = .resid)) +
-#   geom_point() +
-#   geom_smooth(se = FALSE)
-# 
-# 
-# grid.arrange(pfit1, pfit2, pfit3, pfit4, pfit5, ncol = 2, top = textGrob("Diagnosis of linearity by fitted value", gp = gpar(fontsize = 24, fontface = "bold")))
+summary(fit_AUC_mod)
+#summary(fit_AUC_submod)
+
+anova(fit_AUC_mod, fit_AUC_submod)
 ```
 
 
 ```{r}
-autoplot(fit1) +theme_minimal() # dose
-autoplot(fit2) +theme_minimal() # age
-autoplot(fit3) +theme_minimal() # wt_kg
-autoplot(fit4) +theme_minimal() # sex
-autoplot(fit5) +theme_minimal() # study_id
-
+table(order_0_df$site, order_0_df$food)
 ```
 
+```{r, fig.width=8, fig.height=10}
+check_model(fit_AUC_mod)
+
+```
+### Аддитивная модель с дополнительными переменными
+
+```{r fit_lm}
+fit_AUC_mod_add <- lm(log(AUC) ~ dose_g_per_kg + route + site + sex, order_0_df) #age не добавить
+
+summary(fit_AUC_mod)
+summary(fit_AUC_mod_add)
+
+
+#anova(fit_AUC_mod, fit_AUC_mod_add) для sex не работает anova
+```
+```{r, fig.width=8, fig.height=10}
+check_model(fit_AUC_mod_add)
+```
+
+
+```{r}
+order_0_df %>% filter(!is.na(age)) %>% select(dose_g_per_kg, site, route, age)
+# dose 0.57 однозначно соответствует route IV
+```
+
+### Модель с взаимодействиями
+
+```{r fit_lm}
+fit_AUC_mod_int1 <- lm(log(AUC) ~ dose_g_per_kg*route + site, order_0_df)
+fit_AUC_mod_int2 <- lm(log(AUC) ~ dose_g_per_kg + route*site, order_0_df)
+fit_AUC_mod_int3 <- lm(log(AUC) ~ dose_g_per_kg*site + route, order_0_df)
+#fit_AUC_mod_int4 <- lm(log(AUC) ~ dose_g_per_kg*site*route, order_0_df)
+
+
+summary(fit_AUC_mod_int1)
+#summary(fit_AUC_submod)
+
+cat("\n===============================================================\n")
+
+anova(fit_AUC_mod, fit_AUC_mod_int1)
+cat("\n===============================================================\n")
+anova(fit_AUC_mod, fit_AUC_mod_int2)
+cat("\n===============================================================\n")
+anova(fit_AUC_mod, fit_AUC_mod_int3)
+cat("\n===============================================================\n")
+#anova(fit_AUC_mod, fit_AUC_mod_int4)
+```
+
+**Наблюдения:**
+
+1. Существует однозначная зависимость между переменными `site` и `food` --- если у исследуемоего субъекта брали кровь после еды, то брали только из вены. Одну из переменных необходимо исключить из модели.
+
+2. Появляется однозначная зависимость между значениями  `dose_g_per_kg` 0.57 и `route` IV после исключения NA по `age`.
+
+3. Включённые в модель переменные `dose_g_per_kg`, `route`,  `site` имеют стат значимое влияние на `AUC`.
+
+
+**Выводы:**
+
+1. После включения `sex` в модель меняется `Intercept` и коэффициент при `dose_g_per_kg`.
