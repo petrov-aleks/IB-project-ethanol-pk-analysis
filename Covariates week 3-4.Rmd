@@ -16,6 +16,7 @@ library(ggplot2)
 library(ggmosaic)
 library(performance)
 library(ggResidpanel)
+library(ggfortify)
 ```
 
 ```{r data_upload}
@@ -826,7 +827,7 @@ order_0_df_factor <- order_0_df %>%
 Cmax_lm2_v1 <- lm(log(Cmax) ~ dose_g_per_kg + route + food + site, data = order_0_df_factor)
 
 summary(Cmax_lm2_v1)
-#check_model(Cmax_lm2_v1)
+check_model(Cmax_lm2_v1)
 
 broom::tidy(Cmax_lm2_v1, conf.int = TRUE)
 #анализе линейности модели по графику Residuals vs Fitted 
@@ -843,7 +844,7 @@ resid_panel(Cmax_lm2_v1, plots = c("lev", "cookd"))
 
 log(Cmax) ~ dose_g_per_kg + route + food + site + sex + age
 
-```{r Cmax lm2 v1}
+```{r Cmax lm2 v2}
 order_0_df_factor <- order_0_df %>% 
   mutate(
     route = factor(route),
@@ -852,7 +853,7 @@ order_0_df_factor <- order_0_df %>%
     sex = factor(sex)
   )
 
-Cmax_lm2_v2 <- lm(log(Cmax) ~ dose_g_per_kg + route + food + site + sex + age, data = order_0_df_factor)
+Cmax_lm2_v2 <- lm(log(Cmax) ~ dose_g_per_kg + route + food + sex + age, data = order_0_df_factor)
 
 summary(Cmax_lm2_v2)
 #check_model(Cmax_lm2_v1)
@@ -872,7 +873,7 @@ resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
 
 log(Cmax) ~ dose_g_per_kg + route + food + site + sex + age + bsa_m2 + lbm_kg
 
-```{r Cmax lm2 v1}
+```{r Cmax lm2 v3}
 
 Cmax_lm2_v3 <- lm(log(Cmax) ~ dose_g_per_kg + age + bsa_m2 + lbm_kg, data = order_0_df_factor)
 
