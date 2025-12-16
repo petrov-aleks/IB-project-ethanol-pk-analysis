@@ -19,6 +19,7 @@ library(ggfortify)
 library(performance)
 library(ggeffects)
 library(jtools)
+library(sjPlot)
 ```
 
 ```{r data_upload}
@@ -1098,7 +1099,7 @@ ggpredict(fit_AUC_mod, terms = c("dose_g_per_kg", "route", "site")) %>% plot(sho
 
 
 ```{r, fig.width=7, fig.height=5, dpi=300}
-plot_coefs(fit_AUC_mod, omit.coefs = NULL, scale = TRUE, ci_level = 0.95, plot.distributions = FALSE, inner_ci_level = .1, colors = "CUD") + labs(title = "Beta coeffecients with 95% CI")
+plot_coefs(fit_AUC_mod, omit.coefs = NULL, scale = TRUE, ci_level = 0.95, plot.distributions = FALSE, inner_ci_level = .1, colors = "CUD") + labs(title = "Regression coeffecients with 95% CI")
 ```
 
 
@@ -1108,6 +1109,8 @@ table(order_0_df$site, order_0_df$food)
 
 
 ### Аддитивная модель с дополнительными переменными
+
+log(AUC) ~ dose_g_per_kg + route + site + sex
 
 ```{r fit_lm}
 fit_AUC_mod_add <- lm(log(AUC) ~ dose_g_per_kg + route + site + sex, order_0_df) #age не добавить
@@ -1132,7 +1135,16 @@ order_0_df %>% filter(!is.na(age)) %>% select(dose_g_per_kg, site, route, age)
 # dose 0.57 однозначно соответствует route IV
 ```
 
+```{r}
+ggpredict(fit_AUC_mod_add, terms = c("dose_g_per_kg", "route", "site", "sex")) %>% plot(show_data = TRUE, log_y = F, jitter = .01) #+ labs(subtitle = "Adjusted R-squared:  0.7626")
+```
+
+
 ### Модель с взаимодействиями
+
+log(AUC) ~ dose_g_per_kg*route + site 
+
+Логично, что `AUC` будет зависеть от комбинации дозы и способа введения.
 
 ```{r fit_lm}
 fit_AUC_mod_int <- lm(log(AUC) ~ dose_g_per_kg*route + site, order_0_df)
@@ -1142,19 +1154,6 @@ fit_AUC_mod_int <- lm(log(AUC) ~ dose_g_per_kg*route + site, order_0_df)
 
 
 summ(fit_AUC_mod_int, confint = TRUE, digits = 3)
-
-# summary(fit_AUC_mod_int)
-# summary(fit_AUC_submod)
-
-#cat("\n===============================================================\n")
-
-#anova(fit_AUC_mod, fit_AUC_mod_int1)
-#cat("\n===============================================================\n")
-#anova(fit_AUC_mod, fit_AUC_mod_int2)
-#cat("\n===============================================================\n")
-#anova(fit_AUC_mod, fit_AUC_mod_int3)
-#cat("\n===============================================================\n")
-#anova(fit_AUC_mod, fit_AUC_mod_int4)
 ```
 ```{r, fig.width=8, fig.height=10}
 check_model(fit_AUC_mod_int)
@@ -1165,7 +1164,11 @@ check_model(fit_AUC_mod_int)
 ggpredict(fit_AUC_mod_int, terms = c("dose_g_per_kg", "route", "site")) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.7995")
 ```
 ```{r, fig.width=7, fig.height=5, dpi=300}
-plot_coefs(fit_AUC_mod_int, omit.coefs = NULL, scale = TRUE, ci_level = 0.95, plot.distributions = FALSE, inner_ci_level = .1, colors = "CUD") + labs(title = "Beta coeffecients with 95% CI")
+plot_coefs(fit_AUC_mod_int, omit.coefs = NULL, scale = TRUE, ci_level = 0.95, plot.distributions = FALSE, inner_ci_level = .1, colors = "CUD") + labs(title = "Regression coeffecients with 95% CI")
+```
+```{r}
+plot_model(fit_AUC_mod_int, show.values = TRUE, value.offset = 0.3,  axis.labels = c("Dose (g/kg)", "Route (PO)", "Blood sampling (venous)", "Dose (g/kg) x Route (PO)"), title = "Regression coeffecients with 95% CI") +
+  theme_nice()
 ```
 
 
