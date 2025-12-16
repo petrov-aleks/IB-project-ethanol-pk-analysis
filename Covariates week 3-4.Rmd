@@ -17,6 +17,10 @@ suppressPackageStartupMessages(library(ggResidpanel))
 library(sandwich)
 library(ggeffects)
 library(jtools)
+library(gtsummary)
+library(ggmosaic)
+library(performance)
+library(ggResidpanel)
 ```
 
 ```{r data_upload}
@@ -885,3 +889,83 @@ ggplot(aes(y = `Variable`)) +
   labs(title = "Coefficients and 95%CI in Tmax model")
 ```
 
+## Cmax
+
+log(Cmax) ~ dose_g_per_kg + route + food + site
+
+```{r Cmax lm2 v1}
+order_0_df_factor <- order_0_df %>% 
+  mutate(
+    route = factor(route),
+    food = factor(food),
+    site = factor(site)
+  )
+
+Cmax_lm2_v1 <- lm(log(Cmax) ~ dose_g_per_kg + route + food + site, data = order_0_df_factor)
+
+summary(Cmax_lm2_v1)
+#check_model(Cmax_lm2_v1)
+
+broom::tidy(Cmax_lm2_v1, conf.int = TRUE)
+#анализе линейности модели по графику Residuals vs Fitted 
+autoplot(Cmax_lm2_v1, 1, ncol = 1)
+# Диагностика линейности пакетом ggResidpanel
+resid_panel(Cmax_lm2_v1, plots = "resid", smoother = TRUE)
+# Диагностика на гомоскедастичность остатков с помощью графика Scale-Location
+autoplot(Cmax_lm2_v1, 3, ncol = 1)
+# Диагностика нормальности распределения остатков с помощью графика Normal Q-Q:
+resid_panel(Cmax_lm2_v1, plots = c("qq", "hist"))
+# Диагностика на наличие выбросов и вилятельных наблюдений с помощью графика  Residuals vs Leverage и графика расстояний Кука
+resid_panel(Cmax_lm2_v1, plots = c("lev", "cookd"))
+```
+
+log(Cmax) ~ dose_g_per_kg + route + food + site + sex + age
+
+```{r Cmax lm2 v1}
+order_0_df_factor <- order_0_df %>% 
+  mutate(
+    route = factor(route),
+    food = factor(food),
+    site = factor(site),
+    sex = factor(sex)
+  )
+
+Cmax_lm2_v2 <- lm(log(Cmax) ~ dose_g_per_kg + route + food + site + sex + age, data = order_0_df_factor)
+
+summary(Cmax_lm2_v2)
+#check_model(Cmax_lm2_v1)
+
+broom::tidy(Cmax_lm2_v2, conf.int = TRUE)
+#анализе линейности модели по графику Residuals vs Fitted 
+autoplot(Cmax_lm2_v2, 1, ncol = 1)
+# Диагностика линейности пакетом ggResidpanel
+resid_panel(Cmax_lm2_v2, plots = "resid", smoother = TRUE)
+# Диагностика на гомоскедастичность остатков с помощью графика Scale-Location
+autoplot(Cmax_lm2_v2, 3, ncol = 1)
+# Диагностика нормальности распределения остатков с помощью графика Normal Q-Q:
+resid_panel(Cmax_lm2_v2, plots = c("qq", "hist"))
+# Диагностика на наличие выбросов и вилятельных наблюдений с помощью графика  Residuals vs Leverage и графика расстояний Кука
+resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
+```
+
+log(Cmax) ~ dose_g_per_kg + route + food + site + sex + age + bsa_m2 + lbm_kg
+
+```{r Cmax lm2 v1}
+
+Cmax_lm2_v3 <- lm(log(Cmax) ~ dose_g_per_kg + age + bsa_m2 + lbm_kg, data = order_0_df_factor)
+
+summary(Cmax_lm2_v2)
+#check_model(Cmax_lm2_v1)
+
+broom::tidy(Cmax_lm2_v2, conf.int = TRUE)
+#анализе линейности модели по графику Residuals vs Fitted 
+autoplot(Cmax_lm2_v2, 1, ncol = 1)
+# Диагностика линейности пакетом ggResidpanel
+resid_panel(Cmax_lm2_v2, plots = "resid", smoother = TRUE)
+# Диагностика на гомоскедастичность остатков с помощью графика Scale-Location
+autoplot(Cmax_lm2_v2, 3, ncol = 1)
+# Диагностика нормальности распределения остатков с помощью графика Normal Q-Q:
+resid_panel(Cmax_lm2_v2, plots = c("qq", "hist"))
+# Диагностика на наличие выбросов и вилятельных наблюдений с помощью графика  Residuals vs Leverage и графика расстояний Кука
+resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
+```
