@@ -203,13 +203,14 @@ ggplot(Wilkinson_IV_clean, aes(x = time_min, y = conc_g_per_L)) +
 Wilkinson_PO_clean %>%
   select(subject_id, conc_g_per_L, time_min, occasion) %>% 
   mutate(occasion = occasion %>% as.factor) %>% 
-  ggplot(aes(color = occasion)) +
-  geom_line(aes(x = time_min, y = conc_g_per_L, group = occasion), linewidth = 2) +
+  ggplot(aes(x = time_min, y = log(conc_g_per_L))) +
+  geom_line(aes(color = occasion, group = occasion), linewidth = 2) +
+  geom_point(aes(group = occasion)) +
+  geom_hline(yintercept = log(0.2), linetype = "dashed", color = "darkred") +
   facet_wrap(subject_id~.)+
   scale_x_continuous(breaks = seq(0, 420, by = 50))+
   scale_y_continuous(breaks = seq(0, 1, by = 0.25))+
     labs(title = "Зависимость концентрации от времени", subtitle = "Индивидуальные кривые для каждого субъекта", x = "Время, мин", y = "Концентрация, г/л", color = "Визит", caption = "По данным Wilkinson-1976-PO")+
-  geom_hline(aes(yintercept = 0.2)) +
   theme(legend.position = "top")
 ```
 
@@ -342,22 +343,31 @@ Wilkinson_PO_clean %>%
 
 ```{r pk_calc_functions}
 #k - это насколько мы прибавляем к индексу tmax
-pharma_fun <- function(conc, t, dose, k = 1) {
+pharma_fun <- function(conc, t, dose, k = 1, l = 0, order_1_calc = FALSE) {
   # Моделирование для подсчёта beta, C0, Vd 0 порядка
-  t_sample <- {{t}}[(first(which.max({{conc}})) + k):length({{t}})]
-  conc_sample <- conc[(first(which.max({{conc}})) + k):length({{conc}})]
+  t_sample_0 <- {{t}}[(first(which.max({{conc}})) + k):(length({{t}})-l)]
+  conc_sample_0 <- {{conc}}[(first(which.max({{conc}})) + k):(length({{conc}})-l)]
   dose <- first({{dose}})
-  model <- lm(conc_sample ~ t_sample)
+  model <- lm(conc_sample_0 ~ t_sample_0)
   Beta <- -as.numeric(model$coefficients[2])
   C_0_0_order <- as.numeric(model$coefficients[1])
   V_d_0_order <- dose / C_0_0_order
   
   # Моделирование для подсчёта kel, C0, Vd 1 порядка
-  indexes <- conc_sample > 0
-  model_1 <- lm(log(conc_sample[indexes]) ~ t_sample[indexes])
-  Kel <- -as.numeric(model_1$coefficients[2])
-  C_0_1_order <- exp(as.numeric(model_1$coefficients[1]))
-  V_d_1_order <- dose / C_0_1_order
+  if (order_1_calc == TRUE) {
+    t_sample_1 <- {{t}}[(length({{t}})-l):length({{t}})]
+    conc_sample_1 <- {{conc}}[(length({{t}})-l):length({{t}})]
+    indexes <- conc_sample_1 > 0
+    model_1 <- lm(log(conc_sample_1[indexes]) ~ t_sample_1[indexes])
+    Kel <- -as.numeric(model_1$coefficients[2])
+    C_0_1_order <- exp(as.numeric(model_1$coefficients[1]))
+    V_d_1_order <- dose / C_0_1_order
+  } else {
+    Kel <- NA
+    C_0_1_order <- NA
+    V_d_1_order <- NA
+  }
+    
   
   # Подсчёт AUC0-t
   
@@ -405,6 +415,9 @@ Jones_1984_pk <- Jones_1984_clean %>%
   unnest_wider(col = pharma) %>% 
   select(-subject_data)
 
+Jones_1984_clean %>% 
+  filter(conc_g_per_L < 0.25 & time_min > 50)
+
 Jones_1984_pk <- Jones_1984_clean %>% 
   select(-c(time_min, conc_g_per_L)) %>% 
   group_by(subject_id) %>% 
@@ -433,6 +446,9 @@ Ammon_1996_pk <- Ammon_1996_clean %>%
   right_join(Ammon_1996_pk, by = join_by(case)) %>% 
   mutate(subject_id = str_c("A-IV-", subject_id)) %>% 
   select(-case)
+
+Ammon_1996_clean %>%
+  filter(conc_g_per_L < 0.21 & time_min > 50)
 rm(Ammon_1996_clean)
 ```
 
@@ -876,12 +892,25 @@ ggplot(t_max_prediction_plot, aes(x = .fitted, y = Tmax)) +
        y = "Observed values of Tmax, min")
 ```
 
-```{r, fig.height=16, fig.width=20}
+```{r, fig.height=7, fig.width=11, dpi=300}
 t_max_coef %>% 
 ggplot(aes(y = `Variable`)) +
-  geom_point(aes(x = `β estimate`), size = 3) +
-  geom_errorbar(aes(xmin = conf.low, xmax = conf.high), width = 0.5) +
+  geom_linerange(aes(xmin = `95%CI low`, xmax = `95%CI high`), linewidth = 1.2, color = "darkorange2") +
+    geom_point(aes(x = `β estimate`), shape = 21, size = 3, color = "darkorange2", fill = "white") +
+  theme_classic() +
   geom_vline(xintercept = 0, color = "darkred") +
   labs(title = "Coefficients and 95%CI in Tmax model")
 ```
 
+``` {r}
+ggpredict(t_max_full_m, terms = c("food", "route")) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.497")
+```
+
+``` {r}
+ggpredict(t_max_full_m, terms = c("dose_g_per_kg", "route")) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.497")
+```
+
+
+```{r, fig.width=7, fig.height=5, dpi=300}
+plot_coefs(t_max_full_m, omit.coefs = NULL, scale = TRUE, ci_level = 0.95, plot.distributions = FALSE, inner_ci_level = .1, colors = "CUD") + labs(title = "Beta coeffecients with 95% CI")
+```
