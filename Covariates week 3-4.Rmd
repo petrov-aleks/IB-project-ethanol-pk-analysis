@@ -2,7 +2,12 @@
 title: "Covariats_Wilkinson_IV"
 author: "Sagitova M.K."
 date: "2025-12-03"
-output: html_document
+output:
+  html_document:
+    number_sections: false
+    code_folding: hide
+    toc: true
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -30,6 +35,7 @@ library(gtsummary)
 library(ggmosaic)
 library(performance)
 library(ggResidpanel)
+library(table1)
 library(ggfortify)
 ```
 
@@ -579,8 +585,8 @@ order_0_df <- main_df %>%
 order_1_df <- main_df %>% filter(Cmax < 0.23)
 ```
 
-
 # 5. Эксплораторный анализ
+
 ```{r}
 main_df %>% 
   select(-subject_id) %>% 
@@ -605,6 +611,24 @@ main_df %>%
 3.  Личные данные пациента
 •   WT, BH, BMI, BSA, LBM
 •   Sex, Age
+```
+
+```{r}
+label(main_df$study_id)   <- "Study"
+label(main_df$sex)   <- "Sex"
+label(main_df$dose_g_per_kg)    <- "Dose"
+label(main_df$food) <- "Food"
+label(main_df$site) <- "Blood sampling"
+label(main_df$age) <- "Age"
+label(main_df$route) <- "Route"
+
+units(main_df$dose_g_per_kg)   <- "g per kg"
+units(main_df$age)   <- "years"
+
+tbl_output <- table1(~ study_id + dose_g_per_kg + food + site + age + sex|route, data = main_df, render.missing = NULL, overall=c(left="Total"))
+
+
+tbl_output
 ```
 
 ```{r Графики распределения, error=FALSE, warning=FALSE, fig.width=12, fig.height=8, dpi=300}
@@ -652,7 +676,6 @@ ggplot(main_df_log_long, aes(x = value)) +
   labs(x = NULL, y = NULL)
 ```
 
-
 ```{r Factor variables distribution}
 main_df_fac_long <- main_df %>% 
   select(where(is.factor)) %>% 
@@ -670,6 +693,7 @@ ggplot(main_df_fac_long, aes(x = value)) +
   labs(x = NULL, y = NULL)
 
 ```
+
 ## 5.1 Боксплоты
 
 ```{r theme_custom}
@@ -732,8 +756,6 @@ gender_color <- scale_colour_manual(
   )
 ```
 
-
-
 ```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
 p1 <- main_df %>% 
   filter(!is.na(sex)) %>% 
@@ -781,7 +803,6 @@ p4 <-  main_df %>%
 p3 + p4 + plot_annotation(title = "Distribution of Cmax by gender", theme = theme(plot.title = element_text(size = 20)))
   
 ```
-
 
 ```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
 p5 <- main_df %>% 
@@ -849,7 +870,6 @@ p10 <-  main_df %>%
 p9 + p10 + plot_annotation(title = "Distribution of Cmax by route", theme = theme(plot.title = element_text(size = 20)))
   
 ```
-
 
 ```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
 p11 <- main_df %>% 
@@ -938,6 +958,7 @@ p18 <- main_df %>%
 
 p17 + p18 + plot_annotation(title = "Distribution of AUC by food consumption", theme = theme(plot.title = element_text(size = 20)))
 ```
+
 ```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
 p19 <- main_df %>% 
   ggplot(aes(x = site, y = Tmax)) +
@@ -959,6 +980,7 @@ p20 <- main_df %>%
 p19 + p20 + plot_annotation(title = "Distribution of Tmax by blood sampling", theme = theme(plot.title = element_text(size = 20)))
   
 ```
+
 ```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
 p21 <- main_df %>% 
   ggplot(aes(x = site, y = Cmax)) +
@@ -980,6 +1002,7 @@ p22 <-  main_df %>%
 p21 + p22 + plot_annotation(title = "Distribution of Cmax by blood sampling", theme = theme(plot.title = element_text(size = 20)))
   
 ```
+
 ```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
 p23 <- main_df %>% 
   ggplot(aes(x = site, y = AUC)) +
@@ -1002,7 +1025,6 @@ p23 + p24 + plot_annotation(title = "Distribution of AUC by blood sampling", the
   
 ```
 
-
 ```{r Correlation, fig.height=8, fig.width=14, dpi = 200}
 pk_num <- main_df %>% 
   select(where(is.numeric)) %>% 
@@ -1015,10 +1037,10 @@ cor_mat %>%
   ggcorr(., label = TRUE)
   
 ```
-Проверяем гипотезы о различиях групп по категориям food и site 
 
-H0: mean (fasted) = mean(fed)
-H1: mean (fasted) != mean(fed)
+Проверяем гипотезы о различиях групп по категориям food и site
+
+H0: mean (fasted) = mean(fed) H1: mean (fasted) != mean(fed)
 
 ```{r t-test в группах по food}
 t.test(log(AUC) ~ food, data = order_0_df) 
@@ -1034,8 +1056,8 @@ t.test(C_0_0_order ~ food, data = order_0_df)
 t.test(V_d_0_order ~ food, data = order_0_df)
 
 ```
-H0: mean (capillary) = mean(venous)
-H1: mean (capillary) != mean(venous)
+
+H0: mean (capillary) = mean(venous) H1: mean (capillary) != mean(venous)
 
 ```{r t-test в группах по site}
 t.test(log(AUC) ~ site, data = order_0_df) 
@@ -1050,7 +1072,6 @@ t.test(C_0_0_order ~ site, data = order_0_df)
 
 t.test(V_d_0_order ~ site, data = order_0_df)
 ```
-
 
 Проверяем гипотезу о различиях групп по категориям route и sex.
 
@@ -1080,12 +1101,11 @@ t.test(Tmax ~ sex, data = order_0_df)
 
 # 6. Основной регрессионный анализ
 
-
 ## Построение регрессионных моделей по AUC
 
 ### Аддитивная модель c основными переменными (доза, способ введения, способ забора крови)
 
-log(AUC) ~ dose_g_per_kg + route + site
+log(AUC) \~ dose_g_per_kg + route + site
 
 ```{r fit_lm}
 fit_AUC_mod <- lm(log(AUC) ~ dose_g_per_kg + route + site, order_0_df) #+food
@@ -1100,31 +1120,28 @@ summ(fit_AUC_mod, confint = TRUE, digits = 3)
 
 anova(fit_AUC_mod, fit_AUC_submod)
 ```
+
 ```{r, fig.width=8, fig.height=10}
 check_model(fit_AUC_mod)
 ```
 
-
 ```{r}
-ggpredict(fit_AUC_mod, terms = c("dose_g_per_kg", "route", "site")) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.7626")
+ggpredict(fit_AUC_mod, terms = c("dose_g_per_kg", "route", "site"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.7626")
 ```
-
 
 ```{r, fig.width=7, fig.height=5, dpi=300}
 plot_coefs(fit_AUC_mod, omit.coefs = NULL, scale = TRUE, ci_level = 0.95, plot.distributions = FALSE, inner_ci_level = .1, colors = "CUD") + labs(title = "Regression coeffecients with 95% CI")
 ```
 
-
 ```{r, include=FALSE}
 table(order_0_df$site, order_0_df$food)
 ```
 
-
 ### Аддитивная модель с дополнительными переменными
 
-log(AUC) ~ dose_g_per_kg + route + site + sex
+log(AUC) \~ dose_g_per_kg + route + site + sex
 
-```{r fit_lm}
+```{r fit_lm_add}
 fit_AUC_mod_add <- lm(log(AUC) ~ dose_g_per_kg + route + site + sex, order_0_df) #age не добавить
 
 summ(fit_AUC_mod, confint = TRUE, digits = 3)
@@ -1137,10 +1154,10 @@ summ(fit_AUC_mod_add, confint = TRUE, digits = 3)
 
 #anova(fit_AUC_mod, fit_AUC_mod_add) для sex не работает anova
 ```
+
 ```{r, fig.width=8, fig.height=10}
 check_model(fit_AUC_mod_add)
 ```
-
 
 ```{r, include=FALSE}
 order_0_df %>% filter(!is.na(age)) %>% select(dose_g_per_kg, site, route, age)
@@ -1151,14 +1168,13 @@ order_0_df %>% filter(!is.na(age)) %>% select(dose_g_per_kg, site, route, age)
 ggpredict(fit_AUC_mod_add, terms = c("dose_g_per_kg", "route", "site", "sex")) %>% plot(show_data = TRUE, log_y = F, jitter = .01) #+ labs(subtitle = "Adjusted R-squared:  0.7626")
 ```
 
-
 ### Модель с взаимодействиями
 
-log(AUC) ~ dose_g_per_kg*route + site 
+log(AUC) \~ dose_g_per_kg\*route + site
 
 Логично, что `AUC` будет зависеть от комбинации дозы и способа введения.
 
-```{r fit_lm}
+```{r fit_lm_int}
 fit_AUC_mod_int <- lm(log(AUC) ~ dose_g_per_kg*route + site, order_0_df)
 # fit_AUC_mod_int2 <- lm(log(AUC) ~ dose_g_per_kg + route*site, order_0_df)
 # fit_AUC_mod_int3 <- lm(log(AUC) ~ dose_g_per_kg*site + route, order_0_df)
@@ -1167,13 +1183,18 @@ fit_AUC_mod_int <- lm(log(AUC) ~ dose_g_per_kg*route + site, order_0_df)
 
 summ(fit_AUC_mod_int, confint = TRUE, digits = 3)
 ```
+
+```{r}
+anova(fit_AUC_mod_int, fit_AUC_submod)
+```
+
+
 ```{r, fig.width=8, fig.height=10}
 check_model(fit_AUC_mod_int)
 ```
 
-
 ```{r}
-ggpredict(fit_AUC_mod_int, terms = c("dose_g_per_kg", "route", "site")) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.7995")
+ggpredict(fit_AUC_mod_int, terms = c("dose_g_per_kg", "route", "site"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.799") + xlab("Dose (g per kg)")
 ```
 
 ```{r, fig.width=7, fig.height=5, dpi=300}
@@ -1181,14 +1202,13 @@ plot_coefs(fit_AUC_mod_int, omit.coefs = NULL, scale = TRUE, ci_level = 0.95, pl
 ```
 
 ```{r}
-plot_model(fit_AUC_mod_int, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3,  axis.labels = c("Dose (g/kg)", "Route (PO)", "Blood sampling (venous)", "Dose (g/kg) x Route (PO)", "Intercept"), title = "Regression coeffecients with 95% CI") +
+plot_model(fit_AUC_mod_int, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3,  axis.labels = c("Dose (g per kg)", "Route (PO)", "Blood sampling (venous)", "Dose (g per kg) x Route (PO)", "Intercept"), title = "Regression coeffecients with 95% CI") +
   theme_nice()
 ```
 
 **Выводы:**
 
-1. Включение взаимодействия между `dose_g_per_kg` и `route` увеличивает $R^2$ примерно на 3%.
-
+1.  Включение взаимодействия между `dose_g_per_kg` и `route` увеличивает $R^2$ примерно на 3%.
 
 ## Построение регрессионных моделей по Tmax
 
@@ -1264,7 +1284,7 @@ ggplot(aes(y = `Variable`)) +
 
 ## Cmax
 
-log(Cmax) ~ dose_g_per_kg + route + food + site
+log(Cmax) \~ dose_g_per_kg + route + food + site
 
 ```{r Cmax lm2 v1}
 order_0_df_factor <- order_0_df %>% 
@@ -1292,7 +1312,7 @@ resid_panel(Cmax_lm2_v1, plots = c("qq", "hist"))
 resid_panel(Cmax_lm2_v1, plots = c("lev", "cookd"))
 ```
 
-log(Cmax) ~ dose_g_per_kg + route + food + site + sex + age
+log(Cmax) \~ dose_g_per_kg + route + food + site + sex + age
 
 ```{r Cmax lm2 v2}
 order_0_df_factor <- order_0_df %>% 
