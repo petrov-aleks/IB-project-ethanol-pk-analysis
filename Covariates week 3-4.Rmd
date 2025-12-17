@@ -65,7 +65,7 @@ theme_set(standard_theme)
 set_flextable_defaults(table.layout = "autofit")
 ```
 
-# 1. Приведение данных к единому виду
+# 1. Унификация данных
 
 ```{r ammon_clean}
 Ammon_1996_clean <- Ammon_1996 %>% 
@@ -358,7 +358,7 @@ Wilkinson_PO_clean %>%
        caption = "По данным Wilkinson-1976-PO")  
 ```
 
-# 3. Расчет ФК параметров для датасетов
+# 3. Расчет ФК параметров
 
 ```{r pk_calc_functions}
 #k - это насколько мы прибавляем к индексу tmax
@@ -587,6 +587,8 @@ order_1_df <- main_df %>% filter(Cmax < 0.23)
 
 # 5. Эксплораторный анализ
 
+## 5.1 Таблицы
+
 ```{r}
 main_df %>% 
   select(-subject_id) %>% 
@@ -694,7 +696,7 @@ ggplot(main_df_fac_long, aes(x = value)) +
 
 ```
 
-## 5.1 Боксплоты
+## 5.2 Боксплоты
 
 ```{r theme_custom}
 theme_custom <- theme(
@@ -1101,7 +1103,7 @@ t.test(Tmax ~ sex, data = order_0_df)
 
 # 6. Основной регрессионный анализ
 
-## Построение регрессионных моделей по AUC
+## 6.1. Построение регрессионных моделей по AUC
 
 ### Аддитивная модель c основными переменными (доза, способ введения, способ забора крови)
 
@@ -1210,7 +1212,7 @@ plot_model(fit_AUC_mod_int, show.values = TRUE,  show.intercept = TRUE, value.of
 
 1.  Включение взаимодействия между `dose_g_per_kg` и `route` увеличивает $R^2$ примерно на 3%.
 
-## Построение регрессионных моделей по Tmax
+## 6.2. Построение регрессионных моделей по Tmax
 
 ```{r, tmax-full}
 order_0_df <- order_0_df %>% 
@@ -1282,7 +1284,7 @@ ggplot(aes(y = `Variable`)) +
   labs(title = "Coefficients and 95%CI in Tmax model")
 ```
 
-## Cmax
+## 6.3. Построение регрессионных моделей по Cmax
 
 log(Cmax) \~ dose_g_per_kg + route + food + site
 
