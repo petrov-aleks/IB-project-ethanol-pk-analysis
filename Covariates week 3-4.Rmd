@@ -36,6 +36,7 @@ library(ggmosaic)
 library(performance)
 library(ggResidpanel)
 library(table1)
+library(ggfortify)
 ```
 
 ```{r data_upload}
@@ -1296,7 +1297,7 @@ order_0_df_factor <- order_0_df %>%
 Cmax_lm2_v1 <- lm(log(Cmax) ~ dose_g_per_kg + route + food + site, data = order_0_df_factor)
 
 summary(Cmax_lm2_v1)
-#check_model(Cmax_lm2_v1)
+check_model(Cmax_lm2_v1)
 
 broom::tidy(Cmax_lm2_v1, conf.int = TRUE)
 #анализе линейности модели по графику Residuals vs Fitted 
@@ -1322,7 +1323,7 @@ order_0_df_factor <- order_0_df %>%
     sex = factor(sex)
   )
 
-Cmax_lm2_v2 <- lm(log(Cmax) ~ dose_g_per_kg + route + food + site + sex + age, data = order_0_df_factor)
+Cmax_lm2_v2 <- lm(log(Cmax) ~ dose_g_per_kg + route + food + sex + age, data = order_0_df_factor)
 
 summary(Cmax_lm2_v2)
 #check_model(Cmax_lm2_v1)
@@ -1340,7 +1341,19 @@ resid_panel(Cmax_lm2_v2, plots = c("qq", "hist"))
 resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
 ```
 
-log(Cmax) \~ dose_g_per_kg + route + food + site + sex + age + bsa_m2 + lbm_kg
+```{r}
+ggpredict(Cmax_lm2_v2, terms = c("age", "route"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.8459")
+```
+
+
+```{r}
+plot_model(Cmax_lm2_v2, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3, digits = 3,title = "Regression coeffecients with 95% CI") +
+  geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
+  theme_nice()
+```
+
+
+log(Cmax) ~ dose_g_per_kg + route + food + site + sex + age + bsa_m2 + lbm_kg
 
 ```{r Cmax lm2 v3}
 
