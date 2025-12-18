@@ -889,6 +889,10 @@ ggplot(aes(y = `Variable`)) +
   labs(title = "Coefficients and 95%CI in Tmax model")
 ```
 
+```{r}
+ggpredict(t_max_full_m, terms = c("dose_g_per_kg", "route")) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.497")
+```
+
 ## Cmax
 
 log(Cmax) ~ dose_g_per_kg + route + food + site
