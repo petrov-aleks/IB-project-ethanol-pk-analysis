@@ -616,6 +616,25 @@ main_df %>%
 ```
 
 ```{r}
+label(order_0_df$study_id)   <- "Study"
+label(order_0_df$sex)   <- "Sex"
+label(order_0_df$dose_g_per_kg)    <- "Dose"
+label(order_0_df$food) <- "Food"
+label(order_0_df$site) <- "Blood sampling"
+label(order_0_df$age) <- "Age"
+label(order_0_df$route) <- "Route"
+
+units(order_0_df$dose_g_per_kg)   <- "g per kg"
+units(order_0_df$age)   <- "years"
+
+tbl_output_0 <- table1(~ study_id + dose_g_per_kg + route + site + age + sex|food, data = order_0_df, render.missing = NULL, overall=c(left="Total"))
+
+
+tbl_output_0
+```
+
+
+```{r}
 label(main_df$study_id)   <- "Study"
 label(main_df$sex)   <- "Sex"
 label(main_df$dose_g_per_kg)    <- "Dose"
@@ -627,11 +646,12 @@ label(main_df$route) <- "Route"
 units(main_df$dose_g_per_kg)   <- "g per kg"
 units(main_df$age)   <- "years"
 
-tbl_output <- table1(~ study_id + dose_g_per_kg + food + site + age + sex|route, data = main_df, render.missing = NULL, overall=c(left="Total"))
+tbl_output <- table1(~ study_id + dose_g_per_kg + route + site + age + sex|food, data = main_df, render.missing = NULL, overall=c(left="Total"))
 
 
 tbl_output
 ```
+
 
 ```{r Графики распределения, error=FALSE, warning=FALSE, fig.width=12, fig.height=8, dpi=300}
 
@@ -696,7 +716,7 @@ ggplot(main_df_fac_long, aes(x = value)) +
 
 ```
 
-## 5.2 Боксплоты
+## 5.2 Боксплоты для полного датасета
 
 ```{r theme_custom}
 theme_custom <- theme(
@@ -1027,6 +1047,96 @@ p23 + p24 + plot_annotation(title = "Distribution of AUC by blood sampling", the
   
 ```
 
+## 5.3 Боксплоты для датасета `order_0`
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p25 <- order_0_df %>% 
+  ggplot(aes(x = route, y = Cmax)) +
+  geom_violin(aes(fill = route)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  route_fill
+
+p26 <-  order_0_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Cmax, fill = route), colour = "gray40") + 
+  theme_custom + 
+  route_fill
+
+p25 + p26 + plot_annotation(title = "Distribution of Cmax by route", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p27 <- order_0_df %>% 
+  ggplot(aes(x = route, y = AUC)) +
+  geom_violin(aes(fill = route)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  route_fill
+
+p28 <- order_0_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = AUC, fill = route), colour = "gray40") + 
+  theme_custom + 
+  route_fill
+
+p27 + p28 + plot_annotation(title = "Distribution of AUC by route", theme = theme(plot.title = element_text(size = 20)))
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p29 <- order_0_df %>% 
+  ggplot(aes(x = food, y = Cmax)) +
+  geom_violin(aes(fill = food)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  food_fill
+
+p30 <-  order_0_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Cmax, fill = food), colour = "gray40") + 
+  theme_custom + 
+  food_fill
+
+p29 + p30 + plot_annotation(title = "Distribution of Cmax by food consumption", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p31 <- order_0_df %>% 
+  ggplot(aes(x = food, y = AUC)) +
+  geom_violin(aes(fill = food)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  food_fill
+
+p32 <- order_0_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = AUC, fill = food), colour = "gray40") + 
+  theme_custom + 
+  food_fill
+
+p31 + p32 + plot_annotation(title = "Distribution of AUC by food consumption", theme = theme(plot.title = element_text(size = 20)))
+```
+
 ```{r Correlation, fig.height=8, fig.width=14, dpi = 200}
 pk_num <- main_df %>% 
   select(where(is.numeric)) %>% 
@@ -1182,6 +1292,7 @@ fit_AUC_mod_int <- lm(log(AUC) ~ dose_g_per_kg*route + site, order_0_df)
 # fit_AUC_mod_int3 <- lm(log(AUC) ~ dose_g_per_kg*site + route, order_0_df)
 # fit_AUC_mod_int4 <- lm(log(AUC) ~ dose_g_per_kg*site*route, order_0_df)
 
+summary(fit_AUC_mod_int)
 
 summ(fit_AUC_mod_int, confint = TRUE, digits = 3)
 ```
@@ -1189,7 +1300,6 @@ summ(fit_AUC_mod_int, confint = TRUE, digits = 3)
 ```{r}
 anova(fit_AUC_mod_int, fit_AUC_submod)
 ```
-
 
 ```{r, fig.width=8, fig.height=10}
 check_model(fit_AUC_mod_int)
@@ -1347,15 +1457,13 @@ resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
 ggpredict(Cmax_lm2_v2, terms = c("age", "route"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.8459")
 ```
 
-
 ```{r}
 plot_model(Cmax_lm2_v2, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3, digits = 3,title = "Regression coeffecients with 95% CI") +
   geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
   theme_nice()
 ```
 
-
-log(Cmax) ~ dose_g_per_kg + route + food + site + sex + age + bsa_m2 + lbm_kg
+log(Cmax) \~ dose_g_per_kg + route + food + site + sex + age + bsa_m2 + lbm_kg
 
 ```{r Cmax lm2 v3}
 
