@@ -154,6 +154,7 @@ rm(Vestal_1977_young)
 ```{r rat_Kozawa_prep}
 Kozawa_2007 <- Kozawa_2007 %>% 
   mutate(time_min = round(time_h * 60, 0)) %>% 
+  mutate(route = route %>% str_remove_all(" bolus")) %>%
   select(-time_h) %>% 
   mutate(number = dose_g_per_kg/0.5)
 ```
