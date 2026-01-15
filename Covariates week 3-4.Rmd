@@ -49,6 +49,10 @@ Wilkinson_IV <- read.csv("data/raw/Wilkinson-1976-IV.csv")
 Wilkinson_PO <- read.csv("data/raw/Wilkinson-1976-PO.csv")
 Vestal_1977_elderly <- read.csv("data/raw/Vestal-1977-elderly.csv")
 Vestal_1977_young <- read.csv("data/raw/Vestal-1977-young.csv")
+
+Kozawa_2007 <- read.csv("data/raw/Kozawa-2007.csv")
+Eriksson_1977 <- read.csv("data/raw/Eriksson-1977.csv")
+
 ```
 
 ```{r theme_set}
@@ -146,6 +150,31 @@ rename_with(tolower) %>%
          subject_id = str_c("V-Y-", subject_id))  
 rm(Vestal_1977_young)
 ```
+
+```{r rat_Kozawa_prep}
+Kozawa_2007 <- Kozawa_2007 %>% 
+  mutate(time_min = round(time_h * 60, 0)) %>% 
+  mutate(route = route %>% str_remove_all(" bolus")) %>%
+  select(-time_h) %>% 
+  mutate(number = dose_g_per_kg/0.5)
+```
+
+```{r rat_Eriksson_prep}
+Eriksson_1977 <- Eriksson_1977 %>% 
+  mutate(time_min = round(time_h * 60, 0)) %>% 
+  select(-time_h) %>% 
+  mutate(number = case_when(
+      dose_g_per_kg == 0.75 ~ 1,
+      dose_g_per_kg == 1.50 ~ 2,
+      dose_g_per_kg == 3.00 ~ 3,
+    ))
+```
+
+
+```{r rat_data_merge}
+# rat_data <- rbind(Kozawa_2007, Eriksson_1977)
+```
+
 
 # 2. Графики по датасетам
 
@@ -359,6 +388,31 @@ Wilkinson_PO_clean %>%
        caption = "По данным Wilkinson-1976-PO")  
 ```
 
+```{r, fig.height=12, fig.width=15, dpi=300}
+ggplot(Kozawa_2007, aes(x = time_min, y = conc_g_per_L)) +
+  geom_line(aes(group = number)) +
+  scale_y_continuous(breaks = seq(0, 3.6, 0.2)) +
+  scale_x_continuous(breaks = seq(0, 500, 25)) +
+  labs(title = "Зависимость концентрации от времени",
+       subtitle = "Усредненные данные",
+       caption = "По данным Kozawa-2007",
+       x = "Время, мин",
+       y = "Концентрация, г/л")
+```
+
+
+```{r, fig.height=12, fig.width=15, dpi=300}
+ggplot(Eriksson_1977, aes(x = time_min, y = conc_g_per_L)) +
+  geom_line(aes(group = number)) +
+  scale_y_continuous(breaks = seq(0, 1.8, 0.1)) +
+  scale_x_continuous(breaks = seq(0, 300, 30)) +
+  labs(title = "Зависимость концентрации от времени",
+       subtitle = "Усредненные данные",
+       caption = "По данным Eriksson-1977",
+       x = "Время, мин",
+       y = "Концентрация, г/л")
+```
+
 # 3. Расчет ФК параметров
 
 ```{r pk_calc_functions}
@@ -548,6 +602,58 @@ Wilkinson_PO_pk <- Wilkinson_PO_clean %>%
 rm(Wilkinson_PO_clean)
 ```
 
+
+```{r rat_Kozawa_pk}
+Kozawa_2007_pk <- Kozawa_2007 %>% 
+  arrange(time_min) %>% 
+  nest(.by = number, .key = "average_data") %>% 
+  mutate(pharma = purrr::map(average_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-average_data)
+  
+
+Kozawa_2007_pk <- Kozawa_2007_pk %>% 
+  select(-Kel, -C_0_1_order, -V_d_1_order)
+
+Kozawa_2007_pk <- Kozawa_2007 %>% 
+  select(-c(time_min, conc_g_per_L)) %>% 
+  group_by(number) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  right_join(Kozawa_2007_pk) %>% 
+  select(-number)
+```
+
+
+```{r rat_Eriksson_pk}
+Eriksson_1977_pk <- Eriksson_1977 %>% 
+  arrange(time_min) %>% 
+  nest(.by = number, .key = "average_data") %>% 
+  mutate(pharma = purrr::map(average_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-average_data)
+  
+
+Eriksson_1977_pk <- Eriksson_1977_pk %>% 
+  select(-Kel, -C_0_1_order, -V_d_1_order)
+
+# для двух концентраций не хватает точек, чтобы чтобы вычислить beta
+
+Eriksson_1977_pk <- Eriksson_1977 %>% 
+  select(-c(time_min, conc_g_per_L)) %>% 
+  group_by(number) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  right_join(Eriksson_1977_pk) %>% 
+  select(-number)
+```
+
 # 4. Объединение датасетов
 
 ```{r join-all}
@@ -585,6 +691,12 @@ order_0_df <- main_df %>%
 # length(unique(order_0_df$subject_id))
 order_1_df <- main_df %>% filter(Cmax < 0.23)
 ```
+
+
+```{r rat-join}
+rat_data_pk <- rbind(Kozawa_2007_pk, Eriksson_1977_pk)
+```
+
 
 # 5. Эксплораторный анализ
 
