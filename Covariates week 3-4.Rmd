@@ -1503,18 +1503,52 @@ resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
 
 # Данные по крысам
 
-```{r rat data}
-Eriksson_1977 <- read_csv("data/raw/Eriksson-1977.csv")
+```{r rat data IV }
+rat_iv <- rat_data_pk %>% filter(route == "IV") %>% mutate(source = "rat", wt_kg = BW_g/1000)
 
-Kozawa_2007 <- read_csv("data/raw/Kozawa-2007.csv")
+human_iv <- main_df %>% filter(route == "IV") %>% mutate(source = "human")
 
-rat_data <- bind_rows(Kozawa_2007,Eriksson_1977) %>% mutate(time_min = time_h * 60) %>% mutate(wt_kg = BW_g/1000)
+scale_allom <- function(value, W_from, W_to, expo) {
+  value * (W_to / W_from)^expo
+}
 
+```
 
+```{r}
+Vd_pred <- scale_allom (rat_iv$V_d_0_order, W_from = rat_iv$wt_kg, W_to = 70, expo = 1)
+Cl_pred <- scale_allom (rat_iv$CL, W_from = rat_iv$wt_kg, W_to = 70, expo = 0.75)
+beta_pred <- Cl_pred / Vd_pred
+
+rat_iv_scaled <- rat_iv %>% 
+  mutate(
+    V_d_0_order_scaled = Vd_pred,
+    CL_scaled = Cl_pred,
+    Beta_scaled = beta_pred
+  ) %>% 
+  select(source, wt_kg, V_d_0_order, V_d_0_order_scaled, CL, CL_scaled, Beta, Beta_scaled)
+```
+Сравним предсказанные и наблюдаемые значения Vd, CL и Beta у крыс и людей после масштабирования по аллометрическому закону.
+
+```{r}
+rat_iv_scaled_long <- rat_iv_scaled %>% 
+  pivot_longer(
+    cols = -c(source, wt_kg),
+    names_to = "variable",
+    values_to = "value"
+  )
+ggplot(rat_iv_scaled_long, aes(x = wt_kg, y = value, color = source)) +
+  geom_point(size = 3, alpha = 0.7) +
+```
+
+```{r}
 
 ```
 
 ```{r}
 
+```
+
+```{r}
 
 ```
+
