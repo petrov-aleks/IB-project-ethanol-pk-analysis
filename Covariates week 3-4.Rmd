@@ -38,6 +38,7 @@ library(ggResidpanel)
 library(table1)
 library(ggfortify)
 library(see)
+library(officer)
 ```
 
 ```{r data_upload}
@@ -1501,46 +1502,288 @@ resid_panel(Cmax_lm2_v2, plots = c("qq", "hist"))
 resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
 ```
 
-# Данные по крысам
+# Данные по крысам 
 
-```{r rat data IV }
-rat_iv <- str(rat_data_pk) %>% filter(route == "IV") %>% mutate(source = "rat", wt_kg = BW_g/1000)
+## Аллометрия - внутривенный путь введения 
+**Для Vd (экспонента = 1 или 0.932):**
+Vd_human = Vd_rat × (BW_human / BW_rat)^1
 
-human_iv <- str(main_df) %>%
-  filter(route == "IV", !is.na(wt_kg)) %>%
-  mutate(source = "human")
+**Для CL (экспонента = 0.75 или 0.738):**
+CL_human = CL_rat × (BW_human / BW_rat)^0.75
 
-scale_allom <- function(value, W_from, W_to, expo) {
-  value * (W_to / W_from)^expo
-}
+**Для Beta:**
+Beta_human = CL_human / Vd_human
 
-```
+```{r rat to human pred IV}
 
-```{r}
+# Крысы
+rat_iv <- rat_data_pk %>% 
+  filter(route == "IV") %>% 
+  mutate(wt_kg = BW_g / 1000)
 
-```
-Сравним предсказанные и наблюдаемые значения Vd, CL и Beta у крыс и людей после масштабирования по аллометрическому закону.
+# Люди
+human_iv <- main_df %>% 
+  filter(route == "IV", !is.na(V_d_0_order), !is.na(CL), !is.na(wt_kg))
 
-```{r}
-rat_iv_scaled_long <- rat_iv_scaled %>% 
-  pivot_longer(
-    cols = -c(source, wt_kg),
-    names_to = "variable",
-    values_to = "value"
+# ============================================================
+# КЛАССИЧЕСКИЕ ЭКСПОНЕНТЫ (1.0 и 0.75)
+# ============================================================
+
+rat_classic_iv <- rat_iv %>% 
+  mutate(
+    # Шаг 1: Абсолютные параметры для крысы
+    Vd_absolute_rat = V_d_0_order * wt_kg,       # л
+    CL_absolute_rat = CL * wt_kg,                # л/мин
+    
+    # Шаг 2: Коэффициенты a (нормализация на вес с нужной экспонентой)
+    a_V_classic = Vd_absolute_rat / (wt_kg^1.0),     # Vd ~ BW^1.0
+    a_CL_classic = CL_absolute_rat / (wt_kg^0.75),   # CL ~ BW^0.75
+    
+    # Шаг 3: Предсказание для человека 70 кг
+    Vd_pred_classic = a_V_classic * (70^1.0),       # л
+    CL_pred_classic = a_CL_classic * (70^0.75),     # л/мин
+    Beta_pred_classic = CL_pred_classic / Vd_pred_classic  # 1/мин
   )
-ggplot(rat_iv_scaled_long, aes(x = wt_kg, y = value, color = source)) +
-  geom_point(size = 3, alpha = 0.7) +
+
+# Сводка по классическим экспонентам
+summary_classic_iv <- rat_classic_iv %>% 
+  summarise(
+    Method = "Rat predictions (classic exponents: 1.0, 0.75)",
+    n = n(),
+    Vd_mean = mean(Vd_pred_classic),
+    Vd_sd = sd(Vd_pred_classic),
+    CL_mean = mean(CL_pred_classic),
+    CL_sd = sd(CL_pred_classic),
+    Beta_mean = mean(Beta_pred_classic),
+    Beta_sd = sd(Beta_pred_classic)
+  )
+
+
+# ЭКСПОНЕНТЫ ИЗ MATSUMOTO (0.932 и 0.708)
+
+
+rat_matsumoto_iv <- rat_iv %>% 
+  mutate(
+    # Шаг 1: Абсолютные параметры для крысы
+    Vd_absolute_rat = V_d_0_order * wt_kg,       # л
+    CL_absolute_rat = CL * wt_kg,                # л/мин
+    
+    # Шаг 2: Коэффициенты a (используя экспоненты Matsumoto)
+    a_V_matsumoto = Vd_absolute_rat / (wt_kg^0.932),   # Vd ~ BW^0.932
+    a_CL_matsumoto = CL_absolute_rat / (wt_kg^0.708),  # CL ~ BW^0.708
+    
+    # Шаг 3: Предсказание для человека 70 кг
+    Vd_pred_matsumoto = a_V_matsumoto * (70^0.932),    # л
+    CL_pred_matsumoto = a_CL_matsumoto * (70^0.708),   # л/мин
+    Beta_pred_matsumoto = CL_pred_matsumoto / Vd_pred_matsumoto  # 1/мин
+  )
+
+# Сводка по Matsumoto
+summary_matsumoto_iv <- rat_matsumoto %>% 
+  summarise(
+    Method = "Rat predictions (Matsumoto: 0.932, 0.708)",
+    n = n(),
+    Vd_mean = mean(Vd_pred_matsumoto),
+    Vd_sd = sd(Vd_pred_matsumoto),
+    CL_mean = mean(CL_pred_matsumoto),
+    CL_sd = sd(CL_pred_matsumoto),
+    Beta_mean = mean(Beta_pred_matsumoto),
+    Beta_sd = sd(Beta_pred_matsumoto)
+  )
+
+# ДАННЫЕ ЛЮДЕЙ (НАБЛЮДАЕМЫЕ)
+
+summary_human_iv <- human_iv %>% 
+  mutate(
+    Vd_absolute = V_d_0_order * wt_kg,
+    CL_absolute = CL * wt_kg,
+    Beta_calc = CL_absolute / Vd_absolute
+  ) %>% 
+  summarise(
+    Method = "Human observed (IV, with known weight)",
+    n = n(),
+    Vd_mean = mean(Vd_absolute),
+    Vd_sd = sd(Vd_absolute),
+    CL_mean = mean(CL_absolute),
+    CL_sd = sd(CL_absolute),
+    Beta_mean = mean(Beta_calc),
+    Beta_sd = sd(Beta_calc)
+  )
+
+# СРАВНИТЕЛЬНАЯ ТАБЛИЦА
+
+comparison_table_iv <- bind_rows(
+  summary_classic_iv,
+  summary_matsumoto_iv,
+  summary_human_iv
+)
+
+
+# таблица
+comparison_table %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  select(Method, n, 
+         Vd_mean, Vd_sd, 
+         CL_mean, CL_sd, 
+         Beta_mean, Beta_sd) %>% flextable()
+ 
 ```
 
-```{r}
+```{r rat to human pred PO}
 
+# Крысы
+rat_po <- rat_data_pk %>% 
+  filter(route == "PO") %>% 
+  mutate(wt_kg = BW_g / 1000)
+
+# Люди
+human_po <- main_df %>% 
+  filter(route == "PO", !is.na(V_d_0_order), !is.na(CL), !is.na(wt_kg))
+
+
+# КЛАССИЧЕСКИЕ ЭКСПОНЕНТЫ (1.0 и 0.75)
+
+
+rat_classic_po <- rat_po %>% 
+  mutate(
+    # Шаг 1: Абсолютные параметры для крысы
+    Vd_absolute_rat = V_d_0_order * wt_kg,       # л
+    CL_absolute_rat = CL * wt_kg,                # л/мин
+    
+    # Шаг 2: Коэффициенты a (нормализация на вес с нужной экспонентой)
+    a_V_classic = Vd_absolute_rat / (wt_kg^1.0),     # Vd ~ BW^1.0
+    a_CL_classic = CL_absolute_rat / (wt_kg^0.75),   # CL ~ BW^0.75
+    
+    # Шаг 3: Предсказание для человека 70 кг
+    Vd_pred_classic = a_V_classic * (70^1.0),       # л
+    CL_pred_classic = a_CL_classic * (70^0.75),     # л/мин
+    Beta_pred_classic = CL_pred_classic / Vd_pred_classic  # 1/мин
+  )
+
+# Сводка по классическим экспонентам
+summary_classic_po <- rat_classic %>% 
+  summarise(
+    Method = "Rat predictions (classic exponents: 1.0, 0.75)",
+    n = n(),
+    Vd_mean = mean(Vd_pred_classic),
+    Vd_sd = sd(Vd_pred_classic),
+    CL_mean = mean(CL_pred_classic),
+    CL_sd = sd(CL_pred_classic),
+    Beta_mean = mean(Beta_pred_classic),
+    Beta_sd = sd(Beta_pred_classic)
+  )
+
+
+# ЭКСПОНЕНТЫ ИЗ MATSUMOTO (0.932 и 0.708)
+
+rat_matsumoto_po <- rat_po %>% 
+  mutate(
+    # Шаг 1: Абсолютные параметры для крысы
+    Vd_absolute_rat = V_d_0_order * wt_kg,       # л
+    CL_absolute_rat = CL * wt_kg,                # л/мин
+    
+    # Шаг 2: Коэффициенты a (используя экспоненты Matsumoto)
+    a_V_matsumoto = Vd_absolute_rat / (wt_kg^0.932),   # Vd ~ BW^0.932
+    a_CL_matsumoto = CL_absolute_rat / (wt_kg^0.708),  # CL ~ BW^0.708
+    
+    # Шаг 3: Предсказание для человека 70 кг
+    Vd_pred_matsumoto = a_V_matsumoto * (70^0.932),    # л
+    CL_pred_matsumoto = a_CL_matsumoto * (70^0.708),   # л/мин
+    Beta_pred_matsumoto = CL_pred_matsumoto / Vd_pred_matsumoto  # 1/мин
+  )
+
+# Сводка по Matsumoto
+summary_matsumoto_po <- rat_matsumoto_po %>% 
+  summarise(
+    Method = "Rat predictions (Matsumoto: 0.932, 0.708)",
+    n = n(),
+    Vd_mean = mean(Vd_pred_matsumoto),
+    Vd_sd = sd(Vd_pred_matsumoto),
+    CL_mean = mean(CL_pred_matsumoto),
+    CL_sd = sd(CL_pred_matsumoto),
+    Beta_mean = mean(Beta_pred_matsumoto),
+    Beta_sd = sd(Beta_pred_matsumoto)
+  )
+
+# ДАННЫЕ ЛЮДЕЙ (НАБЛЮДАЕМЫЕ)
+
+summary_human_po <- human_po %>% 
+  mutate(
+    Vd_absolute = V_d_0_order * wt_kg,
+    CL_absolute = CL * wt_kg,
+    Beta_calc = CL_absolute / Vd_absolute
+  ) %>% 
+  summarise(
+    Method = "Human observed (PO, with known weight)",
+    n = n(),
+    Vd_mean = mean(Vd_absolute),
+    Vd_sd = sd(Vd_absolute),
+    CL_mean = mean(CL_absolute),
+    CL_sd = sd(CL_absolute),
+    Beta_mean = mean(Beta_calc),
+    Beta_sd = sd(Beta_calc)
+  )
+
+# СРАВНИТЕЛЬНАЯ ТАБЛИЦА
+
+comparison_table_po <- bind_rows(
+  summary_classic_po,
+  summary_matsumoto_po,
+  summary_human_po
+)
+
+
+# таблица
+comparison_table_po %>% 
+  mutate(across(where(is.numeric), ~round(.x, 4))) %>% 
+  select(Method, n, 
+         Vd_mean, Vd_sd, 
+         CL_mean, CL_sd, 
+         Beta_mean, Beta_sd) %>% flextable()
+ 
 ```
 
-```{r}
+```{r comparsion table}
+comparison_all <- bind_rows(
+  comparison_table_iv %>% mutate(Route = "IV"),
+  comparison_table_po %>% mutate(Route = "PO")
+) %>%
+  mutate(Route = factor(Route, levels = c("IV", "PO"))) %>%
+  arrange(Route, Method) %>%
+  transmute(
+    Route,
+    Method,
+    n,
+    `Vd, mean (SD)`   = sprintf("%.3f (%.3f)", Vd_mean, Vd_sd),
+    `CL, mean (SD)`   = sprintf("%.4f (%.4f)", CL_mean, CL_sd),
+    `Beta, mean (SD)` = sprintf("%.6f (%.6f)", Beta_mean, Beta_sd)
+  )
 
+
+ft <- flextable(comparison_all) %>%
+  set_header_labels(
+    Route = "Route",
+    Method = "Method",
+    n = "n"
+  ) %>%
+  bold(part = "header") %>%
+  align(align = "center", part = "all") %>%
+  autofit() %>%
+  # Визуальный "разделитель": объединяем Route по вертикали
+  merge_v(j = "Route") %>%
+  valign(j = "Route", valign = "top") %>%
+  # Подсветим блоки IV/PO (опционально)
+  bg(i = ~ Route == "IV", bg = "#F2F2F2", part = "body") %>%
+  bg(i = ~ Route == "PO", bg = "#FFFFFF", part = "body") %>%
+  # Линии для читабельности
+  border_remove() %>%
+  hline_top(border = fp_border(width = 1), part = "all") %>%
+  hline_bottom(border = fp_border(width = 1), part = "all") %>%
+  vline(border = fp_border(width = 0.5), part = "all")
+
+ft
 ```
 
-```{r}
 
-```
+
 
