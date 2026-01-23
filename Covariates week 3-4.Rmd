@@ -1772,7 +1772,7 @@ ft <- flextable(comparison_all) %>%
   # Визуальный "разделитель": объединяем Route по вертикали
   merge_v(j = "Route") %>%
   valign(j = "Route", valign = "top") %>%
-  # Подсветим блоки IV/PO (опционально)
+  # Подсветим блоки IV/PO 
   bg(i = ~ Route == "IV", bg = "#F2F2F2", part = "body") %>%
   bg(i = ~ Route == "PO", bg = "#FFFFFF", part = "body") %>%
   # Линии для читабельности
