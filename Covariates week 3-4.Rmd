@@ -1579,7 +1579,7 @@ rat_matsumoto_iv <- rat_iv %>%
   )
 
 # Сводка по Matsumoto
-summary_matsumoto_iv <- rat_matsumoto %>% 
+summary_matsumoto_iv <- rat_matsumoto_iv %>% 
   summarise(
     Method = "Rat predictions (Matsumoto: 0.932, 0.708)",
     n = n(),
@@ -1661,7 +1661,7 @@ rat_classic_po <- rat_po %>%
   )
 
 # Сводка по классическим экспонентам
-summary_classic_po <- rat_classic %>% 
+summary_classic_po <- rat_classic_po %>% 
   summarise(
     Method = "Rat predictions (classic exponents: 1.0, 0.75)",
     n = n(),
@@ -1772,7 +1772,7 @@ ft <- flextable(comparison_all) %>%
   # Визуальный "разделитель": объединяем Route по вертикали
   merge_v(j = "Route") %>%
   valign(j = "Route", valign = "top") %>%
-  # Подсветим блоки IV/PO (опционально)
+  # Подсветим блоки IV/PO 
   bg(i = ~ Route == "IV", bg = "#F2F2F2", part = "body") %>%
   bg(i = ~ Route == "PO", bg = "#FFFFFF", part = "body") %>%
   # Линии для читабельности
@@ -1783,6 +1783,7 @@ ft <- flextable(comparison_all) %>%
 
 ft
 ```
+
 
 
 
