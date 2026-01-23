@@ -779,7 +779,7 @@ order_0_df %>%
 
 rat_data_pk %>%  
   mutate(Vmax_abs_rat = (V_max_0_order * BW_g / 1000), # g/h
-    Vmax_abs_hum = V_allom_scale(Vmax_abs_rat, BW_g / 1000, 72, n = 0.75)) %>% 
+    Vmax_abs_hum = V_allom_scale(Vmax_abs_rat, BW_g / 1000, 72, n = 0.81)) %>% 
   filter(!is.na(V_max_0_order)) %>% 
   select(study_id, dose_g_per_kg, route, BW_g, V_max_0_order, Vmax_abs_rat, Vmax_abs_hum) %>% 
   mutate(across(where(is.numeric), ~round(.x, 2))) %>% 
@@ -824,7 +824,7 @@ order_0_df %>%
 
 rat_data_pk %>%  
   mutate(Beta = Beta * 60, # g/L/h
-         Beta_hum = V_allom_scale(Beta, BW_g / 1000, 72, n = 0.75)) %>% 
+         Beta_hum = V_allom_scale(Beta, BW_g / 1000, 72, n = -0.25)) %>% 
   filter(!is.na(Beta)) %>% 
   select(study_id, dose_g_per_kg, route, BW_g, Beta, Beta_hum) %>% 
   mutate(across(where(is.numeric), ~round(.x, 2))) %>% 
