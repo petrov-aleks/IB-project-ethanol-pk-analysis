@@ -1527,8 +1527,8 @@ rat_data_pk <-  rat_data_pk %>%
 ```{r allometric_func}
 allom_scale <- function(V_rat, # в л, абсолютный объём
                         rat_weight, # в кг
-                        human_weight = 1,
-                        n = 1) # в кг, по умолчанию считаем на 1 кг
+                        human_weight = 1, # в кг, по умолчанию считаем на 1 кг
+                        n = 1)
 {
   V_human = V_rat * (human_weight / rat_weight) ^ n
   return(V_human)
@@ -1537,25 +1537,29 @@ allom_scale <- function(V_rat, # в л, абсолютный объём
 
 ```{r allometric}
 # Подготовка датасета для аллометрии
-allometric <- main_df %>% 
+allometric <- order_0_df %>% 
   filter(!is.na(wt_kg)) %>% 
   select(study_id, subject_id, dose_g_per_kg, route, 
          Beta, V_d_0_order, wt_kg) %>% 
-  mutate(V_max = Beta * V_d_0_order * 60)
+  mutate(V_max = Beta * V_d_0_order * 60) %>% 
+  mutate(Vd_obs = V_d_0_order * wt_kg,
+         Vmax_obs = Beta * V_d_0_order * wt_kg * 60,
+         Beta_obs = Beta * 60) %>% 
+  relocate(c(Vd_obs, Vmax_obs, Beta_obs), .after = V_max)
 
 # Только по датасету Вилкиксон (человеческие дозы 0,5 - 0,62)
-allometric_IV_Wilk <- allometric %>% 
-  filter(route == "IV",
-         study_id == "Wilkinson-1976-IV") %>% 
-  crossing(rat_data_pk %>% filter(dose_g_per_kg == 0.5) %>% 
-             mutate(Vd_abs_rat = (V_d_0_order * wt_kg)) %>% 
-             rename_with(~ paste0("rat_", .x))) %>% 
-  mutate(Vd_classic = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg),
-         Vd_matsumoto = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg, 0.932),
-         Beta_classic = allom_scale(rat_Beta, rat_wt_kg, wt_kg, 0.75),
-         Beta_matsumoto = allom_scale(rat_Beta, rat_wt_kg, wt_kg, 0.708),
-         Vmax_classic = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.75),
-         Vmax_matsumoto = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.708))
+# allometric_IV_Wilk <- allometric %>% 
+#   filter(route == "IV",
+#          study_id == "Wilkinson-1976-IV") %>% 
+#   crossing(rat_data_pk %>% filter(dose_g_per_kg == 0.5) %>% 
+#              mutate(Vd_abs_rat = (V_d_0_order * wt_kg)) %>% 
+#              rename_with(~ paste0("rat_", .x))) %>% 
+#   mutate(Vd_classic = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg),
+#          Vd_matsumoto = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg, 0.932),
+#          Beta_classic = allom_scale(rat_Beta, rat_wt_kg, wt_kg, 0.75),
+#          Beta_matsumoto = allom_scale(rat_Beta, rat_wt_kg, wt_kg, 0.708),
+#          Vmax_classic = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.75),
+#          Vmax_matsumoto = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.708))
 ```
 
 ## IV allometric scaling (main df)
@@ -1569,21 +1573,46 @@ allometric_IV <- allometric %>%
              rename_with(~ paste0("rat_", .x))) %>% 
   mutate(Vd_classic = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg),
          Vd_matsumoto = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg, 0.932),
-         Beta_classic = allom_scale(rat_Beta, rat_wt_kg, wt_kg, 0.75),
-         Beta_matsumoto = allom_scale(rat_Beta, rat_wt_kg, wt_kg, 0.708),
+         Beta_classic = allom_scale(rat_Beta * 60, rat_wt_kg, wt_kg, 0.75 - 1),
+         Beta_matsumoto = allom_scale(rat_Beta * 60, rat_wt_kg, wt_kg, 0.708 - 0.932),
          Vmax_classic = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.75),
-         Vmax_matsumoto = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.708))
+         Vmax_matsumoto = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.708)) %>% 
+  mutate(Vd_metr_cl = (Vd_classic - Vd_obs) / Vd_obs * 100,
+         Vd_metr_mats = (Vd_matsumoto - Vd_obs) / Vd_obs * 100,
+         Beta_metr_cl = (Beta_classic - Beta_obs) / Beta_obs * 100,
+         Beta_metr_mats = (Beta_matsumoto - Beta_obs) / Beta_obs * 100,
+         Vmax_metr_cl = (Vmax_classic - Vmax_obs) / Vmax_obs * 100,
+         Vmax_metr_mats = (Vmax_matsumoto - Vmax_obs) / Vmax_obs * 100
+  ) %>% 
+  mutate(across(contains("metr"), ~round(.x, 3)))
 ```
 
 ```{r main_dose_IV}
 # Наблюдаемые значения и средняя доза для выборки
-main_df_IV <- main_df %>% 
-  filter(route == "IV") %>% 
+main_df_IV <- order_0_df %>% 
+  filter(route == "IV" & !is.na(wt_kg)) %>% 
   mutate(Vd_obs = V_d_0_order * wt_kg,
          Vmax_obs = Beta * V_d_0_order * wt_kg * 60,
          Beta_obs = Beta * 60)
 
 mean(main_df_IV$dose_g_per_kg)
+```
+```{r Vd_prop_IV, fig.width=5, fig.height=3, dpi=300}
+allometric_IV %>% 
+  select(contains("Vd_metr")) %>% 
+  rename(`Allometric classic` = Vd_metr_cl,
+         `Matsumoto` = Vd_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Vd allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Rat dose = 0.5 g/kg"
+  ) +
+  theme_bw()
 ```
 
 ```{r Vd_visual_IV}
@@ -1595,14 +1624,32 @@ Vd_vis_IV <- bind_rows(
 )
 
 ggplot(Vd_vis_IV, aes(x = model, y = value)) +
-  geom_boxplot() +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
   theme_bw()+
   labs(
     x = "Used allometric scale exponent",
     y = "Vd, L", 
-    title = "Vd, allometric scaling using different allometric scale exponents, IV route of administration",
-    subtitle = "Mean human dose = 0.49 g/kg, rat dose = 0.5 g/kg"
+    title = "Vd, allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Mean human dose = 0.57 g/kg, rat dose = 0.5 g/kg"
   )
+```
+
+```{r Beta_prop_IV, fig.width=6, fig.height=4, dpi=300}
+allometric_IV %>% 
+  select(contains("Beta_metr")) %>% 
+  rename(`Allometric classic` = Beta_metr_cl,
+         `Matsumoto` = Beta_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Beta allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Rat dose = 0.5 g/kg"
+  ) +
+  theme_bw()
 ```
 
 ```{r Beta_visual_IV}
@@ -1614,15 +1661,33 @@ Beta_vis_IV <- bind_rows(
 )
 
 ggplot(Beta_vis_IV, aes(x = model, y = value)) +
-  geom_boxplot() +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
   theme_bw()+
   labs(
     x = "Used allometric scale exponent",
     y = "Beta, g/L/hour", 
-    title = "Beta, allometric scaling using different allometric scale exponents, IV route of administration",
-    subtitle = "Mean human dose = 0.49 g/kg, rat dose = 0.5 g/kg"
+    title = "Beta, allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Mean human dose = 0.57 g/kg, rat dose = 0.5 g/kg"
   )
 
+```
+
+```{r Vmax_prop_IV, fig.width=6, fig.height=4, dpi=300}
+allometric_IV %>% 
+  select(contains("Vmax_metr")) %>% 
+  rename(`Allometric classic` = Vmax_metr_cl,
+         `Matsumoto` = Vmax_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Vmax allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Rat dose = 0.5 g/kg"
+  ) +
+  theme_bw()
 ```
 
 ```{r Vmax_visual_IV}
@@ -1634,13 +1699,13 @@ Vmax_vis_IV <- bind_rows(
 )
 
 ggplot(Vmax_vis_IV, aes(x = model, y = value)) +
-  geom_boxplot() +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
   theme_bw()+
   labs(
     x = "Used allometric scale exponent",
     y = "Vmax, g/hour", 
-    title = "Vmax, allometric scaling using different allometric scale exponents, IV route of administration",
-    subtitle = "Mean human dose = 0.49 g/kg, rat dose = 0.5 g/kg"
+    title = "Vmax, allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Mean human dose = 0.57 g/kg, rat dose = 0.5 g/kg"
   )
 ```
 
@@ -1654,19 +1719,40 @@ allometric_PO <- allometric %>%
              mutate(Vd_abs_rat = (V_d_0_order * wt_kg)) %>% 
              rename_with(~ paste0("rat_", .x))) %>% 
   mutate(Vd_classic = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg),
-         Vd_matsumoto = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg, 0.932))
+         Vd_matsumoto = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg, 0.932)) %>% 
+  mutate(Vd_metr_cl = (Vd_classic - Vd_obs) / Vd_obs * 100,
+         Vd_metr_mats = (Vd_matsumoto - Vd_obs) / Vd_obs * 100,
+  ) %>% 
+  mutate(across(contains("metr"), ~round(.x, 3)))
   
 ```
 
 ```{r main_dose_PO}
 # Подготовка основного датасета
-main_df_PO <- main_df %>% 
-  filter(route == "PO") %>% 
+main_df_PO <- order_0_df %>% 
+  filter(route == "PO" & !is.na(wt_kg)) %>% 
   mutate(Vd_obs = V_d_0_order * wt_kg,
          Vmax_obs = Beta * V_d_0_order * wt_kg * 60,
          Beta_obs = Beta * 60)
 
 mean(main_df_PO$dose_g_per_kg)
+```
+```{r Vd_prop_PO_750, fig.width=6, fig.height=4, dpi=300}
+allometric_PO %>% 
+  select(contains("Vd_metr")) %>% 
+  rename(`Allometric classic` = Vd_metr_cl,
+         `Matsumoto` = Vd_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Vd allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Rat dose = 0.75 g/kg"
+  ) +
+  theme_bw()
 ```
 
 ```{r Vd_visual_PO_750_mg}
@@ -1678,13 +1764,13 @@ Vd_vis_PO <- bind_rows(
 )
 
 ggplot(Vd_vis_PO, aes(x = model, y = value)) +
-  geom_boxplot() +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
   theme_bw()+
   labs(
     x = "Used allometric scale exponent",
     y = "Vd, L", 
-    title = "Vd, allometric scaling using different allometric scale exponents, PO route of administration",
-    subtitle = "Mean human dose = 0.60 g/kg, rat dose = 0.75 g/kg"
+    title = "Vd, allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Mean human dose = 0.58 g/kg, rat dose = 0.75 g/kg"
   )
 ```
 
@@ -1696,13 +1782,40 @@ allometric_PO_3 <- allometric %>%
   filter(route == "PO") %>% 
   crossing(rat_data_pk %>% filter(dose_g_per_kg == 3) %>% 
              mutate(Vd_abs_rat = (V_d_0_order * wt_kg)) %>% 
-             rename_with(~ paste0("rat_", .x))) %>% 
+             rename_with(~ paste0("rat_", .x))) %>%
   mutate(Vd_classic = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg),
          Vd_matsumoto = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg, 0.932),
-         Beta_classic = allom_scale(rat_Beta, rat_wt_kg, wt_kg, 0.75),
-         Beta_matsumoto = allom_scale(rat_Beta, rat_wt_kg, wt_kg, 0.708),
+         Beta_classic = allom_scale(rat_Beta * 60, rat_wt_kg, wt_kg, 0.75 - 1),
+         Beta_matsumoto = allom_scale(rat_Beta * 60, rat_wt_kg, wt_kg, 0.708 - 0.932),
          Vmax_classic = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.75),
-         Vmax_matsumoto = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.708))
+         Vmax_matsumoto = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.708)) %>% 
+  mutate(Vd_metr_cl = (Vd_classic - Vd_obs) / Vd_obs * 100,
+         Vd_metr_mats = (Vd_matsumoto - Vd_obs) / Vd_obs * 100,
+         Beta_metr_cl = (Beta_classic - Beta_obs) / Beta_obs * 100,
+         Beta_metr_mats = (Beta_matsumoto - Beta_obs) / Beta_obs * 100,
+         Vmax_metr_cl = (Vmax_classic - Vmax_obs) / Vmax_obs * 100,
+         Vmax_metr_mats = (Vmax_matsumoto - Vmax_obs) / Vmax_obs * 100
+  ) %>% 
+  mutate(across(contains("metr"), ~round(.x, 3)))
+  
+```
+
+```{r Vd_prop_PO_3000, fig.width=6, fig.height=4, dpi=300}
+allometric_PO_3 %>% 
+  select(contains("Vd_metr")) %>% 
+  rename(`Allometric classic` = Vd_metr_cl,
+         `Matsumoto` = Vd_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Vd allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Rat dose = 3.00 g/kg"
+  ) +
+  theme_bw()
 ```
 
 ```{r Vd_visual_PO_3_g}
@@ -1713,15 +1826,33 @@ Vd_vis_PO_3 <- bind_rows(
   allometric_PO_3 %>% transmute(value = Vd_matsumoto, model = "Matsumoto")
 )
 
-ggplot(Vd_vis_PO, aes(x = model, y = value)) +
-  geom_boxplot() +
+ggplot(Vd_vis_PO_3, aes(x = model, y = value)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
   theme_bw()+
   labs(
     x = "Used allometric scale exponent",
     y = "Vd, L", 
-    title = "Vd, allometric scaling using different allometric scale exponents, PO route of administration",
-    subtitle = "Mean human dose = 0.60 g/kg, rat dose = 3.00 g/kg"
+    title = "Vd, allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Mean human dose = 0.58 g/kg, rat dose = 3.00 g/kg"
   )
+```
+
+```{r Beta_prop_PO_3000, fig.width=6, fig.height=4, dpi=300}
+allometric_PO_3 %>% 
+  select(contains("Beta_metr")) %>% 
+  rename(`Allometric classic` = Beta_metr_cl,
+         `Matsumoto` = Beta_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Beta allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Rat dose = 3.00 g/kg"
+  ) +
+  theme_bw()
 ```
 
 ```{r Beta_visual_PO_3_g}
@@ -1732,15 +1863,33 @@ Beta_vis_PO_3 <- bind_rows(
   allometric_PO_3 %>% transmute(value = Beta_matsumoto, model = "Matsumoto")
 )
 
-ggplot(Vd_vis_PO, aes(x = model, y = value)) +
-  geom_boxplot() +
+ggplot(Beta_vis_PO_3, aes(x = model, y = value)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
   theme_bw()+
   labs(
     x = "Used allometric scale exponent",
     y = "Beta, g/L/hour", 
-    title = "Beta, allometric scaling using different allometric scale exponents, PO route of administration",
-    subtitle = "Mean human dose = 0.60 g/kg, rat dose = 3.00 g/kg"
+    title = "Beta, allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Mean human dose = 0.58 g/kg, rat dose = 3.00 g/kg"
   )
+```
+
+```{r Vmax_prop_PO_3000, fig.width=6, fig.height=4, dpi=300}
+allometric_PO_3 %>% 
+  select(contains("Vmax_metr")) %>% 
+  rename(`Allometric classic` = Vmax_metr_cl,
+         `Matsumoto` = Vmax_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Vmax allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Rat dose = 3.00 g/kg"
+  ) +
+  theme_bw()
 ```
 
 ```{r Vmax_visual_PO_3_g}
@@ -1751,13 +1900,13 @@ Vmax_vis_PO_3 <- bind_rows(
   allometric_PO_3 %>% transmute(value = Vmax_matsumoto, model = "Matsumoto")
 )
 
-ggplot(Vd_vis_PO, aes(x = model, y = value)) +
-  geom_boxplot() +
+ggplot(Vmax_vis_PO_3, aes(x = model, y = value)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
   theme_bw()+
   labs(
     x = "Used allometric scale exponent",
     y = "Vmax, g/hour", 
-    title = "Vmax, allometric scaling using different allometric scale exponents, PO route of administration",
-    subtitle = "Mean human dose = 0.60 g/kg, rat dose = 3.00 g/kg"
+    title = "Vmax, allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Mean human dose = 0.58 g/kg, rat dose = 3.00 g/kg"
   )
 ```
