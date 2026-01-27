@@ -1510,3 +1510,37 @@ resid_panel(Cmax_lm2_v2, plots = c("qq", "hist"))
 # Диагностика на наличие выбросов и вилятельных наблюдений с помощью графика  Residuals vs Leverage и графика расстояний Кука
 resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
 ```
+
+```{r rat Vmax}
+rat_data_pk <-  rat_data_pk %>% 
+  mutate(V_max_0_order = Beta * 60 * V_d_0_order) %>% # г / кг / час
+  relocate(V_max_0_order, .after = V_d_0_order)
+```
+
+```{r allometric func}
+allom_scale <- function(V_rat, # в л, абсолютный объём
+                        rat_weight, # в кг
+                        human_weight = 1,
+                        n = 1) # в кг, по умолчанию считаем на 1 кг
+{
+  V_human = V_rat * (human_weight / rat_weight) ^ n
+  return(V_human)
+}
+```
+
+
+```{r allometric_matsumoto_IV}
+allometric_matsumoto <- main_df %>% 
+  filter(!is.na(wt_kg)) %>% 
+  select(study_id, subject_id, dose_g_per_kg, route, 
+         Beta, V_d_0_order, wt_kg) %>% 
+  mutate(V_max = Beta * V_d_0_order * 60)
+
+allometric_matsumoto_IV <- allometric_matsumoto %>% 
+  filter(route == "IV",
+         0.5 <= dose_g_per_kg,
+         dose_g_per_kg < 0.6) 
+  
+```
+
+
