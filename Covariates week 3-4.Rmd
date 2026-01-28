@@ -1540,11 +1540,16 @@ resid_panel(fit_Vd, plots = c("lev", "cookd"))
 ```
 
 ```{r}
-ggpredict(fit_Vd, terms = c("wt_kg", "sex"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.2632") + xlab("Weight (kg)")
+ggpredict(fit_Vd, terms = c("wt_kg", "sex"), ci_level = 0.95) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) +
+  labs(title = "Predicted values of Vd",
+    subtitle = "Adjusted R-squared:  0.2259",
+    color = "Sex") +
+  xlab("Weight (kg)") +
+  ylab("Vd (L / kg)")
 ```
 
 ```{r}
-plot_model(fit_Vd, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3,  axis.labels = c("Weight (kg)", "Sex", "Intercept"), title = "Regression coeffecients with 95% CI") +
+plot_model(fit_Vd, digits = 3, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3,  axis.labels = c("Weight (kg)", "Sex", "Intercept"), title = "Regression coeffecients with 95% CI") +
   theme_nice()
 ```
 
