@@ -1427,3 +1427,38 @@ resid_panel(Cmax_lm2_v2, plots = c("qq", "hist"))
 # Диагностика на наличие выбросов и вилятельных наблюдений с помощью графика  Residuals vs Leverage и графика расстояний Кука
 resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
 ```
+
+
+## Beta
+
+```{r}
+fit_Beta_1 <- lm(log(Beta) ~ log(dose_g_per_kg) * route + food, data = order_0_df_factor)
+
+summary(fit_Beta_1)
+```
+
+```{r}
+fit_Beta_1_sub <- lm(log(Beta) ~ 1,  data = order_0_df_factor)
+
+anova(fit_Beta_1, fit_Beta_1_sub)
+```
+
+```{r, fig.width = 16, fig.height = 8}
+check_model(fit_Beta_1)
+```
+
+```{r, fig.width = 16, fig.height = 8}
+resid_panel(fit_Beta_1, plots = c("lev", "cookd"))
+```
+
+```{r}
+ggpredict(fit_Beta_1, terms = c("dose_g_per_kg", "route"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.5671") + xlab("Dose (g per kg)")
+```
+
+```{r, fig.width = 6, fig.height = 6}
+plot_model(fit_Beta_1, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3,  axis.labels = c("Dose (g per kg) x Route (PO)", "food (fed)","Route (PO)", "Dose (g per kg)", "Intercept")) +
+labs(title = "Regression coefficients for Beta with 95% CI", 
+       subtitle = "log(Cmax) ~ dose_g_per_kg + route + food + sex + age") +
+  theme_nice()+
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+```
