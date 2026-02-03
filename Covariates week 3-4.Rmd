@@ -1,11 +1,11 @@
 ---
-title: "Covariats_Wilkinson_IV"
-author: "Sagitova M.K."
-date: "2025-12-03"
+title: "Biostatistical Analysis of Ethanol Pharmacokinetics"
+author: "Anna Vronskaia, Alexey Gordeev, Ekaterina Danilina, Milana Sagitova, Sergey Tsaregorodtsev"
+date: "2026-01-31"
 output:
   html_document:
     number_sections: false
-    code_folding: hide
+    code_folding: show
     toc: true
     toc_float: true
 ---
@@ -79,7 +79,7 @@ flex_default_fun <- function(x) {
 }
 ```
 
-# 1. Унификация данных
+# 1. Data unification
 
 ```{r ammon_clean}
 Ammon_1996_clean <- Ammon_1996 %>% 
@@ -160,9 +160,9 @@ rename_with(tolower) %>%
 rm(Vestal_1977_young)
 ```
 
-# 2. Графики по датасетам
+# 2. Data plots
 
-## 2.1 Графики индивидуальных кривых
+## 2.1 Individual curves concentration-time
 
 ```{r ammon_ind_plot, fig.width=24, fig.height=16, dpi=300}
 Ammon_1996_clean %>% 
@@ -173,7 +173,7 @@ Ammon_1996_clean %>%
   facet_wrap(subject_id~.)+
   scale_x_continuous(breaks = seq(0, 420, by = 50))+
   scale_y_continuous(breaks = seq(0, 1, by = 0.25))+
-    labs(title = "Зависимость концентрации от времени", subtitle = "Индивидуальные кривые для каждого субъекта", x = "Время, мин", y = "Концентрация, г/л", color = "Визит", caption = "По данным Ammon-1996")+
+    labs(title = "Concentration-time plot", subtitle = "Individual curves for each subject", x = "Time, min", y = "Concentration, g/L", color = "Визит", caption = "Source: Ammon-1996")+
   theme(legend.position = "top")
 ```
 
@@ -183,11 +183,11 @@ ggplot(Jones_1984_clean, aes(x = time_min, y = conc_g_per_L)) +
   scale_y_continuous(breaks = seq(0, 1.4, 0.1)) +
   scale_x_continuous(breaks = seq(0, 420, 30)) +
   # coord_cartesian(xlim = c(60, 420)) +
-  labs(title = "Зависимость концентрации от времени",
-       subtitle = "Индивидуальные кривые для каждого субъекта",
-       caption = "По данным Jones-1984",
-       x = "Время, мин",
-       y = "Концентрация, г/л")
+  labs(title = "Concentration-time plot",
+       subtitle = "Individual curves for each subject",
+       caption = "Source: Jones-1984",
+       x = "Time, min",
+       y = "Concentration, g/L")
 ```
 
 ```{r yelland_ind_plot, fig.width=24, fig.height=16, dpi=300}
@@ -199,7 +199,7 @@ Yelland_2008_clean %>%
   facet_wrap(subject_id~.)+
   scale_x_continuous(breaks = seq(0, 420, by = 50))+
   scale_y_continuous(breaks = seq(0, 1, by = 0.25))+
-    labs(title = "Зависимость концентрации от времени", subtitle = "Индивидуальные кривые для каждого субъекта", x = "Время, мин", y = "Концентрация, г/л", color = "Визит", caption = "По данным Yelland-2008")+
+    labs(title = "Concentration-time plot", subtitle = "Individual curves for each subject", x = "Time, min", y = "Concentration, g/L", color = "Occasion", caption = "Source: Yelland-2008")+
   theme(legend.position = "top")
 ```
 
@@ -212,11 +212,11 @@ Emberger_2023_clean %>%
   scale_x_continuous(breaks = seq(0, 420, by = 50)) +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +
   scale_color_discrete(breaks = as.character(1:10)) +
-    labs(title = "Зависимость концентрации от времени",
-         subtitle = "Индивидуальные кривые для каждого субъекта", 
-         x = "Время, мин", y = "Концентрация, г/л",
-         color = "Субъект", 
-         caption = "По данным Thierauf-Emberger-2023") +
+    labs(title = "Concentration-time plot",
+         subtitle = "Individual curves for each subject", 
+         x = "Time, min", y = "Concentration, g/L",
+         color = "Subject", 
+         caption = "Source: Thierauf-Emberger-2023") +
   theme(legend.position = "top")
 ```
 
@@ -226,11 +226,11 @@ ggplot(Wilkinson_IV_clean, aes(x = time_min, y = conc_g_per_L)) +
   scale_y_continuous(breaks = seq(0, 1.4, 0.1)) +
   scale_x_continuous(breaks = seq(0, 510, 30)) +
   # coord_cartesian(xlim = c(60, 420)) +
-  labs(title = "Зависимость концентрации от времени",
-       subtitle = "Индивидуальные кривые для каждого субъекта",
-       caption = "По данным Wilkinson-1976-IV",
-       x = "Время, мин",
-       y = "Концентрация, г/л")
+  labs(title = "Concentration-time plot",
+       subtitle = "Individual curves for each subject",
+       caption = "Source: Wilkinson-1976-IV",
+       x = "Time, min",
+       y = "Concentration, g/L")
 ```
 
 ```{r wilkinson_po_ind_plot, fig.width=20, fig.height=14}
@@ -242,14 +242,14 @@ Wilkinson_PO_clean %>%
   facet_wrap(subject_id~.)+
   scale_x_continuous(breaks = seq(0, 420, by = 50))+
   scale_y_continuous(breaks = seq(0, 1, by = 0.25))+
-    labs(title = "Зависимость концентрации от времени", subtitle = "Индивидуальные кривые для каждого субъекта", x = "Время, мин", y = "Концентрация, г/л", color = "Визит", caption = "По данным Wilkinson-1976-PO")+
+    labs(title = "Concentration-time plot", subtitle = "Individual curves for each subject", x = "Time, min", y = "Concentration, g/L", color = "Occasion", caption = "Source: Wilkinson-1976-PO")+
   geom_hline(aes(yintercept = 0.2)) +
   theme(legend.position = "top")
 ```
 
-## 2.2 Среднеее и стандартное отклонение концентрации по времени
+## 2.2 Mean и standard deviation of concentration
 
-Время усреднено
+In each time point time is averaged.
 
 ```{r ammon_mean_sd_plot, fig.width=24, fig.height=16, dpi=300, message=FALSE}
 Ammon_1996_clean %>% 
@@ -265,12 +265,12 @@ Ammon_1996_clean %>%
   geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
   scale_x_continuous(breaks = seq(0, 400, by = 50)) +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
-  labs(title = "Зависимость концентрации от времени",
+  labs(title = "Concentration-time plot",
        subtitle = "Mean ± SD",
-       x = "Время, мин",
-       y = "Концентрация, г/л",
-       color = "Визит",
-       caption = "По данным Ammon-1996")
+       x = "Time, min",
+       y = "Concentration, g/L",
+       color = "Occasion",
+       caption = "Source: Ammon-1996")
 ```
 
 ```{r jones_mean_sd_plot, fig.height=12, fig.width=15, dpi=300}
@@ -285,11 +285,11 @@ Jones_1984_clean %>%
   geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
   scale_x_continuous(breaks = seq(0, 400, by = 50)) +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
-  labs(title = "Зависимость концентрации от времени",
+  labs(title = "Concentration-time plot",
        subtitle = "Mean ± SD",
-       x = "Время, мин",
-       y = "Концентрация, г/л",
-       caption = "По данным Jones-1984")
+       x = "Time, min",
+       y = "Concentration, g/L",
+       caption = "Source: Jones-1984")
 ```
 
 ```{r yelland_mean_sd_plot, fig.width=16, fig.height=9, dpi=300, message=FALSE}
@@ -306,12 +306,12 @@ Yelland_2008_clean %>%
   geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
   scale_x_continuous(breaks = seq(0, 400, by = 50)) +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
-  labs(title = "Зависимость концентрации от времени",
+  labs(title = "Concentration-time plot",
        subtitle = "Mean ± SD",
-       x = "Время, мин",
-       y = "Концентрация, г/л",
-       color = "Визит",
-       caption = "По данным Yelland-2008")
+       x = "Time, min",
+       y = "Concentration, g/L",
+       color = "Occasion",
+       caption = "Source: Yelland-2008")
 ```
 
 ```{r emberger_mean_sd_plot, fig.width=24, fig.height=16, dpi=300}
@@ -326,11 +326,11 @@ Emberger_2023_clean %>%
   geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
   scale_x_continuous(breaks = seq(0, 400, by = 50)) +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
-  labs(title = "Зависимость концентрации от времени",
+  labs(title = "Concentration-time plot",
        subtitle = "Mean ± SD",
-       x = "Время, мин",
-       y = "Концентрация, г/л",
-       caption = "По данным Thierauf-Emberger-2023")
+       x = "Time, min",
+       y = "Concentration, g/L",
+       caption = "Source: Thierauf-Emberger-2023")
 ```
 
 ```{r wilkinson_iv_mean_sd_plot, fig.width=24, fig.height=16, dpi=300}
@@ -346,11 +346,11 @@ Wilkinson_IV_clean %>%
   geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
   scale_x_continuous(breaks = seq(0, 400, by = 50)) +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
-  labs(title = "Зависимость концентрации от времени",
+  labs(title = "Concentration-time plot",
        subtitle = "Mean ± SD",
-       x = "Время, мин",
-       y = "Концентрация, г/л",
-       caption = "По данным Wilkinson-1976-IV")  
+       x = "Time, min",
+       y = "Concentration, g/L",
+       caption = "Source: Wilkinson-1976-IV")  
 ```
 
 ```{r wilkinson_po__mean_sd_plot, fig.width=24, fig.height=16, dpi=300}
@@ -365,19 +365,19 @@ Wilkinson_PO_clean %>%
   geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
   scale_x_continuous(breaks = seq(0, 400, by = 50)) +
   scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
-  labs(title = "Зависимость концентрации от времени",
+  labs(title = "Concentration-time plot",
        subtitle = "Mean ± SD",
-       x = "Время, мин",
-       y = "Концентрация, г/л",
-       caption = "По данным Wilkinson-1976-PO")  
+       x = "Time, min",
+       y = "Concentration, g/L",
+       caption = "Source: Wilkinson-1976-PO")  
 ```
 
-# 3. Расчет ФК параметров
+# 3. Evaluation of PK-parameters
 
 ```{r pk_calc_functions}
-#k - это насколько мы прибавляем к индексу tmax
+#k is how much we add to the tmax index
 pharma_fun <- function(conc, t, dose, k = 1) {
-  # Моделирование для подсчёта beta, C0, Vd 0 порядка
+  # Modeling for calculation beta, C0, Vd 0 order
   t_sample <- {{t}}[(first(which.max({{conc}})) + k):length({{t}})]
   conc_sample <- conc[(first(which.max({{conc}})) + k):length({{conc}})]
   dose <- first({{dose}})
@@ -386,14 +386,14 @@ pharma_fun <- function(conc, t, dose, k = 1) {
   C_0_0_order <- as.numeric(model$coefficients[1])
   V_d_0_order <- dose / C_0_0_order
   
-  # Моделирование для подсчёта kel, C0, Vd 1 порядка
-  indexes <- conc_sample > 0
-  model_1 <- lm(log(conc_sample[indexes]) ~ t_sample[indexes])
-  Kel <- -as.numeric(model_1$coefficients[2])
-  C_0_1_order <- exp(as.numeric(model_1$coefficients[1]))
-  V_d_1_order <- dose / C_0_1_order
+  # Modeling for calculation kel, C0, Vd 1 order
+  # indexes <- conc_sample > 0
+  # model_1 <- lm(log(conc_sample[indexes]) ~ t_sample[indexes])
+  # Kel <- -as.numeric(model_1$coefficients[2])
+  # C_0_1_order <- exp(as.numeric(model_1$coefficients[1]))
+  # V_d_1_order <- dose / C_0_1_order
   
-  # Подсчёт AUC0-t
+  # Calculation of AUC0-t
   
   # if (length({{t}}) < 2) AUC <- NA
   # if (anyNA({{t}}) | anyNA({{conc}})) AUC <- NaN
@@ -403,22 +403,22 @@ pharma_fun <- function(conc, t, dose, k = 1) {
   c1 = {{conc}}[-1]
   AUC = sum(((c0 + c1)/2)*(t1 - t0))
   
-  # Подсчёт Cmax
+  # Calculation of Cmax
   cmax <- max(conc)
   
-  # Подсчёт Tmax
+  # Calculation of Tmax
   tmax <- t[first(which.max(conc))]
   
-  # Подсчёт CL
+  # Calculation of CL (roughly)
   cl = dose/AUC #l/(kg*min)
   # V = CL/Kel 
   
   return(list(Beta = Beta,
-              Kel = Kel,
+              # Kel = Kel,
               C_0_0_order = C_0_0_order,
               V_d_0_order = V_d_0_order,
-              C_0_1_order = C_0_1_order,
-              V_d_1_order = V_d_1_order,
+              # C_0_1_order = C_0_1_order,
+              # V_d_1_order = V_d_1_order,
               AUC = AUC,
               Cmax = cmax,
               Tmax = tmax,
@@ -426,10 +426,10 @@ pharma_fun <- function(conc, t, dose, k = 1) {
 }
 
 stat_ph <- list(
-        "Среднее" = ~mean(., na.rm = TRUE) %>% round(4),
-        "Медиана" = ~median(., na.rm = TRUE)%>% round(4),
-        "Стандартное отклонение"   = ~sd(., na.rm = TRUE) %>% round(4),
-        "Коэффициент вариации (CV), %" = ~round((sd(., na.rm = TRUE))/(mean(., na.rm = TRUE)) * 100, 2)
+        "Mean" = ~mean(., na.rm = TRUE) %>% round(4),
+        "Median" = ~median(., na.rm = TRUE)%>% round(4),
+        "Standard deviation"   = ~sd(., na.rm = TRUE) %>% round(4),
+        "Coefficient of variation (CV), %" = ~round((sd(., na.rm = TRUE))/(mean(., na.rm = TRUE)) * 100, 2)
         )
 
 ```
@@ -561,7 +561,7 @@ Wilkinson_PO_pk <- Wilkinson_PO_clean %>%
 rm(Wilkinson_PO_clean)
 ```
 
-# 4. Объединение датасетов
+# 4. Binding datasets
 
 ```{r join-all}
 main_df <- bind_rows(Ammon_1996_pk,
@@ -578,7 +578,7 @@ main_df <- main_df %>%
 ```
 
 ```{r zero-first-orders-df}
-# Оставил только средние значения по визитам (независимость наблюдений соблюдена)
+# Only mean values by visits (the assumption of independence of observations is fulfilled)
 WILK <- main_df %>% 
   filter(study_id == "Wilkinson-1976-PO") %>% 
   arrange(desc(dose_g_per_kg), .by_group = TRUE) %>% 
@@ -592,16 +592,20 @@ order_0_df <- main_df %>%
   ungroup() %>% 
   select(-occasion) %>% 
   bind_rows(WILK) %>% 
-  select(-c(Kel, occasion, contains("1_order"))) 
+  select(-c(
+    # Kel, 
+    occasion #,
+    # contains("1_order")
+    )) 
 
 # nrow(order_0_df)
 # length(unique(order_0_df$subject_id))
-order_1_df <- main_df %>% filter(Cmax < 0.23)
+# order_1_df <- main_df %>% filter(Cmax < 0.23)
 ```
 
-# 5. Эксплораторный анализ
+# 5. Exploratory analysis
 
-## 5.1 Таблицы
+## 5.1 Tables
 
 ```{r}
 main_df %>% 
@@ -610,21 +614,21 @@ main_df %>%
 ```
 
 ```         
-1.  ФК-параметры (endpoints)
+1.  PK-parameters (endpoints)
 •   AUC, Cmax, 
 •   C0_0, C0_1
 •   Beta, Kel, 
 •   Tmax
 •   Vd_0,Vd_1
 •   CL
-2. Условия эксперимента
+2. Experimental conditions
 •   Dose (g/kg)
 •   Route (IV/PO)
 •   Occasion (1/2/NA)
 •   Food (fed/fasted)
 •   Infusion_duration_min
 •   Study_id
-3.  Личные данные пациента
+3.  Patient's personal data
 •   WT, BH, BMI, BSA, LBM
 •   Sex, Age
 ```
@@ -647,7 +651,7 @@ tbl_output <- table1(~ study_id + dose_g_per_kg + food + site + age + sex|route,
 tbl_output
 ```
 
-```{r Графики распределения, error=FALSE, warning=FALSE, fig.width=12, fig.height=8, dpi=300}
+```{r distribution-plots, error=FALSE, warning=FALSE, fig.width=12, fig.height=8, dpi=300}
 
 main_df_long <- main_df %>% 
   select(where(is.numeric)) %>% 
@@ -664,7 +668,7 @@ ggplot(main_df_long, aes(x = value)) +
   labs(x = NULL, y = NULL)
 ```
 
-```{r density plot, fig.width=12, fig.height=8, dpi=300}
+```{r density-plots, fig.width=12, fig.height=8, dpi=300}
 ggplot(main_df_long, aes(x = value)) +
   geom_density(na.rm = TRUE) +
   facet_wrap(~ variable, scales = "free") +
@@ -672,12 +676,18 @@ ggplot(main_df_long, aes(x = value)) +
   labs(x = NULL, y = NULL)
 ```
 
-Можно прологарифмировать переменные с правосторонней ассимметрией Kel, V_d_o, V_d_1, C_0_1_order
+We can take the logarithm of variables with right-sided skewness (V_d_0, AUC, CL)
 
 ```{r density_plot_log, fig.width=12, fig.height=8, dpi=300}
 
 main_df_log_long <- main_df %>% 
-  mutate(across(c(Kel, V_d_0_order, V_d_1_order, C_0_1_order, AUC, CL), function(x) log(x))) %>% 
+  mutate(across(c(
+    # Kel,
+    V_d_0_order,
+    # V_d_1_order,
+    # C_0_1_order,
+    AUC,
+    CL), function(x) log(x))) %>% 
   select(where(is.numeric)) %>% 
   pivot_longer(
     cols = everything(),
@@ -692,7 +702,7 @@ ggplot(main_df_log_long, aes(x = value)) +
   labs(x = NULL, y = NULL)
 ```
 
-```{r Factor variables distribution}
+```{r factor-variables-distribution}
 main_df_fac_long <- main_df %>% 
   select(where(is.factor)) %>% 
   pivot_longer(
@@ -710,7 +720,7 @@ ggplot(main_df_fac_long, aes(x = value)) +
 
 ```
 
-## 5.2 Боксплоты
+## 5.2 Boxplots
 
 ```{r theme_custom}
 theme_custom <- theme(
@@ -1054,7 +1064,7 @@ cor_mat %>%
   
 ```
 
-Проверяем гипотезы о различиях групп по категориям food и site
+Testing hypotheses about differences between groups by category "food" and "site"
 
 H0: mean (fasted) = mean(fed) H1: mean (fasted) != mean(fed)
 
@@ -1089,7 +1099,7 @@ t.test(C_0_0_order ~ site, data = order_0_df)
 t.test(V_d_0_order ~ site, data = order_0_df)
 ```
 
-Проверяем гипотезу о различиях групп по категориям route и sex.
+Testing hypotheses about differences between groups by category "route" and "sex".
 
 ```{r t-test 0_order route_sex}
 t.test(Beta ~ route, data = order_0_df) 
@@ -1113,14 +1123,14 @@ t.test(Tmax ~ route, data = order_0_df)
 t.test(Tmax ~ sex, data = order_0_df)
 ```
 
-Результаты: Группы по способу введения различаются по всем фк параметрам. Группы по полу различаются по всем фк-параметрам кроме Tmax.
+**Results**: The administration route groups differed in all pharmacokinetic parameters. The gender groups differed in all pharmacokinetic parameters except Tmax.
 
 
-# 6. Основной регрессионный анализ
+# 6. Main Regression Analysis
 
-## 6.1. Построение регрессионных моделей по AUC
+## 6.1. Regression models for AUC
 
-### Аддитивная модель c основными переменными (доза, способ введения, способ забора крови)
+### 6.1.1 Additive model with main variables (dose, route of administration, blood sampling method)
 
 log(AUC) \~ dose_g_per_kg + route + site
 
@@ -1154,12 +1164,12 @@ plot_coefs(fit_AUC_mod, omit.coefs = NULL, scale = TRUE, ci_level = 0.95, plot.d
 table(order_0_df$site, order_0_df$food)
 ```
 
-### Аддитивная модель с дополнительными переменными
+### 6.1.2 Additive model with additional variables
 
 log(AUC) \~ dose_g_per_kg + route + site + sex
 
 ```{r fit_lm_add}
-fit_AUC_mod_add <- lm(log(AUC) ~ dose_g_per_kg + route + site + sex, order_0_df) #age не добавить
+fit_AUC_mod_add <- lm(log(AUC) ~ dose_g_per_kg + route + site + sex, order_0_df) #age cannot be added
 
 summ(fit_AUC_mod, confint = TRUE, digits = 3)
 summ(fit_AUC_mod_add, confint = TRUE, digits = 3)
@@ -1169,7 +1179,7 @@ summ(fit_AUC_mod_add, confint = TRUE, digits = 3)
 # summary(fit_AUC_mod_add)
 
 
-#anova(fit_AUC_mod, fit_AUC_mod_add) для sex не работает anova
+#anova(fit_AUC_mod, fit_AUC_mod_add) Anova does not work with variable sex
 ```
 
 ```{r, fig.width=8, fig.height=10}
@@ -1178,18 +1188,18 @@ check_model(fit_AUC_mod_add)
 
 ```{r, include=FALSE}
 order_0_df %>% filter(!is.na(age)) %>% select(dose_g_per_kg, site, route, age)
-# dose 0.57 однозначно соответствует route IV
+# dose 0.57 clearly corresponds to route IV
 ```
 
 ```{r}
 ggpredict(fit_AUC_mod_add, terms = c("dose_g_per_kg", "route", "site", "sex")) %>% plot(show_data = TRUE, log_y = F, jitter = .01) #+ labs(subtitle = "Adjusted R-squared:  0.7626")
 ```
 
-### Модель с взаимодействиями
+### 6.1.3 Model with interactions
 
 log(AUC) \~ dose_g_per_kg\*route + site
 
-Логично, что `AUC` будет зависеть от комбинации дозы и способа введения.
+It is logical that `AUC` will depend on the combination of dose and method of administration.
 
 ```{r fit_lm_int}
 fit_AUC_mod_int <- lm(log(AUC) ~ dose_g_per_kg*route + site, order_0_df)
@@ -1223,11 +1233,11 @@ plot_model(fit_AUC_mod_int, show.values = TRUE,  show.intercept = TRUE, value.of
   theme_nice()
 ```
 
-**Выводы:**
+**Coclusions:**
 
-1.  Включение взаимодействия между `dose_g_per_kg` и `route` увеличивает $R^2$ примерно на 3%.
+Including the interaction between `dose_g_per_kg` and `route` increases $R^2$ by about 3%.
 
-## 6.2. Построение регрессионных моделей по Tmax
+## 6.2. Regression models for Tmax
 
 ```{r, tmax-full}
 order_0_df <- order_0_df %>% 
@@ -1253,7 +1263,7 @@ ggResidpanel::resid_xpanel(t_max_full_m)
 ggResidpanel::resid_panel(t_max_full_m, plots = c("lev", "cookd"))
 ```
 
-Оценка коэффициентов модели, используя сэндвич-эстиматор
+Estimating model coefficients using sandwich estimator
 
 ```{r}
 t_max_coef <- coeftest(t_max_full_m, vcov. = vcovHC, type = "HC3") %>%
@@ -1299,7 +1309,7 @@ ggplot(aes(y = `Variable`)) +
   labs(title = "Coefficients and 95%CI in Tmax model")
 ```
 
-## 6.3. Построение регрессионных моделей по Cmax
+## 6.3. Regression models for Cmax
 
 log(Cmax) \~ dose_g_per_kg + route + food + site
 
@@ -1317,15 +1327,15 @@ summary(Cmax_lm2_v1)
 check_model(Cmax_lm2_v1)
 
 broom::tidy(Cmax_lm2_v1, conf.int = TRUE)
-#анализе линейности модели по графику Residuals vs Fitted 
+# analysis of model linearity using Residuals vs Fitted plot
 autoplot(Cmax_lm2_v1, 1, ncol = 1)
-# Диагностика линейности пакетом ggResidpanel
+# Linearity diagnosis with ggResidpanel library
 resid_panel(Cmax_lm2_v1, plots = "resid", smoother = TRUE)
-# Диагностика на гомоскедастичность остатков с помощью графика Scale-Location
+# Diagnosis of homoscedasticity of residuals using the Scale-Location plot
 autoplot(Cmax_lm2_v1, 3, ncol = 1)
-# Диагностика нормальности распределения остатков с помощью графика Normal Q-Q:
+# Diagnosing the normality of residual distribution using a Normal Q-Q plot:
 resid_panel(Cmax_lm2_v1, plots = c("qq", "hist"))
-# Диагностика на наличие выбросов и вилятельных наблюдений с помощью графика  Residuals vs Leverage и графика расстояний Кука
+# Diagnosis of outliers and anomalous observations using the Residuals vs Leverage plot and Cook's distance plot
 resid_panel(Cmax_lm2_v1, plots = c("lev", "cookd"))
 ```
 
@@ -1346,17 +1356,20 @@ summary(Cmax_lm2_v2)
 check_model(Cmax_lm2_v1)
 
 broom::tidy(Cmax_lm2_v2, conf.int = TRUE)
-#анализе линейности модели по графику Residuals vs Fitted 
+# analysis of model linearity using Residuals vs Fitted plot
 autoplot(Cmax_lm2_v2, 1, ncol = 1)
-# Диагностика линейности пакетом ggResidpanel
+# Linearity diagnosis with ggResidpanel library
 resid_panel(Cmax_lm2_v2, plots = "resid", smoother = TRUE)
-# Диагностика на гомоскедастичность остатков с помощью графика Scale-Location
+# Diagnosis of homoscedasticity of residuals using the Scale-Location plot
 autoplot(Cmax_lm2_v2, 3, ncol = 1)
-# Диагностика нормальности распределения остатков с помощью графика Normal Q-Q:
+# Diagnosing the normality of residual distribution using a Normal Q-Q plot:
 resid_panel(Cmax_lm2_v2, plots = c("qq", "hist"))
-# Диагностика на наличие выбросов и вилятельных наблюдений с помощью графика  Residuals vs Leverage и графика расстояний Кука
+# Diagnosis of outliers and anomalous observations using the Residuals vs Leverage plot and Cook's distance plot
 resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
 ```
+
+
+
 ```{r, fig.height=10, fig.width=10}
 t_max_coef <- coeftest(Cmax_lm2_v2, vcov. = vcovHC, type = "HC3") %>%
 broom::tidy(conf.int = TRUE) %>% 
@@ -1401,19 +1414,19 @@ summary(Cmax_lm2_v3)
 #check_model(Cmax_lm2_v1)
 
 broom::tidy(Cmax_lm2_v3, conf.int = TRUE)
-#анализе линейности модели по графику Residuals vs Fitted 
+# analysis of model linearity using Residuals vs Fitted plot
 autoplot(Cmax_lm2_v3, 1, ncol = 1)
-# Диагностика линейности пакетом ggResidpanel
+# Linearity diagnosis with ggResidpanel library
 resid_panel(Cmax_lm2_v3, plots = "resid", smoother = TRUE)
-# Диагностика на гомоскедастичность остатков с помощью графика Scale-Location
+# Diagnosis of homoscedasticity of residuals using the Scale-Location plot
 autoplot(Cmax_lm2_v3, 3, ncol = 1)
-# Диагностика нормальности распределения остатков с помощью графика Normal Q-Q:
+# Diagnosing the normality of residual distribution using a Normal Q-Q plot:
 resid_panel(Cmax_lm2_v3, plots = c("qq", "hist"))
-# Диагностика на наличие выбросов и вилятельных наблюдений с помощью графика  Residuals vs Leverage и графика расстояний Кука
+# Diagnosis of outliers and anomalous observations using the Residuals vs Leverage plot and Cook's distance plot
 resid_panel(Cmax_lm2_v3, plots = c("lev", "cookd"))
 ```
 
-## 6.4. Построение регрессионных моделей по C_0
+## 6.4. Regression models for C_0
 
 ```{r С_0_0_order-lm1-v1}
 order_0_df
@@ -1426,28 +1439,28 @@ Adjusted R-squared:  0.8286
 
 1) Posterior Predictive Check
 
-Линии плотности моделей и наблюдений почти совпадают. Это означает, что модель в целом адекватно воспроизводит распределение C_0_0
+The density lines of the models and observations almost coincide. This means that the model adequately reproduces the distribution of C_0_0.
 
 2) Linearity
 
-зелёная сглаженная линия близка к горизонтали, но виден лёгкий систематический тренд на правом конце (при больших fitted). 
-Сильного нарушения линейности нет. возможна не хватает эффекта взаимодействия или нелинейного эффекта одного из предикторов.
+The green smoothed line is close to horizontal, but there is a slight systematic trend visible at the right end (with large fitted values).
+There is no significant violation of linearity. It is possible that there is insufficient interaction or nonlinear effect of one of the predictors.
 
 3) Homogeneity of variance
-Гетероскедастичности нет
+There is no heteroscedasticity.
 
 4) Influential observations
 
-видны несколько наблюдений, которые помечены номерами (78, 92, 62, 95, 67), заметнее всех
+Several influential observations are visible, marked with numbers (78, 92, 62, 95, 67)
 
 5) Normality of residuals
 
-Q–Q график выглядит приемлемо
+The Q–Q chart looks acceptable.
 
 6) Collinearty VIF
 dose_g_per_kg, route, study_id - High ≥ 10
 
-Попробую убрать лишние показатели, например в каждом исследовании 1 уровень food
+I will try to remove unnecessary indicators, for example, in each study, 1 level of food.
 
 ```{r С_0_0_order-lm1-var1.1}
 C_0_0_lm1_v2 <- lm(log(C_0_0_order) ~ study_id, data = order_0_df)
@@ -1456,25 +1469,26 @@ check_model(C_0_0_lm1_v2)
 
 ```
 Adjusted R-squared:  0.8277
-Убрали коллинеарность
+Removed collinearity.
 
 ```{r С_0_0_order-lm2-v1-v2-part1}
 order_0_df
 C_0_0_lm2_v1 <- lm(log(C_0_0_order) ~ study_id + sex+age , data = order_0_df)
-summary(C_0_0_lm2_v1) #sex и age зависит от study_id, нет смысла смотреть по всем данным
+summary(C_0_0_lm2_v1) #sex and age depend on study_id, there is no point in looking at all the data
 
 
-df_sa <- order_0_df %>% filter(!is.na(sex), !is.na(age), !is.na(C_0_0_order)) #по факту вилкинсон и Thierauf, 18 наблюдений
+df_sa <- order_0_df %>% filter(!is.na(sex), !is.na(age), !is.na(C_0_0_order)) 
+# Wilkinson and Thierauf data, 18 observations
 
 df_sa <- df_sa %>%  mutate(bmi = wt_kg / (bh_cm/100)^2, 
-         bsa_m2 = sqrt(bh_cm * wt_kg / 3600)) #bsa в модели заходит лучше
+         bsa_m2 = sqrt(bh_cm * wt_kg / 3600)) # bsa fits better in the model
 
 C_0_0_lm2_v2 <- lm(log(C_0_0_order) ~ log(dose_g_per_kg) + bsa_m2 + sex, data = df_sa) 
 summary(C_0_0_lm2_v2)
 check_model(C_0_0_lm2_v2)
 ```
 
-изуально выглядит лучше, но предикторов очень много, посчитал bmi и bsa, попробовал по всякому включить в модель
+It looks better visually, but there are a lot of predictors. I calculated BMI and BSA and tried to include them in the model in various ways.
 
 ```{r С_0_0_order-lm3-v1}
 C_0_0_lm3_v1 <- lm(log(C_0_0_order) ~ bsa_m2 , data = order_0_df)
@@ -1483,7 +1497,7 @@ summary(C_0_0_lm3_v1)
 check_model(C_0_0_lm3_v1)
 ```
 
-## 6.5. Построение регрессионных моделей по Vd
+## 6.5. Regression models for Vd
 
 ```{r basic_lms}
 fit_Vd_1 <- lm(V_d_0_order ~ route + food + site, data = order_0_df_factor)
@@ -1565,7 +1579,7 @@ plot_model(fit_Vd, digits = 3, show.values = TRUE,  show.intercept = TRUE, value
   theme_nice()
 ```
 
-## 6.6. Построение регрессионных моделей по Beta
+## 6.6. Regression models for Beta
 
 ```{r}
 fit_Beta_1 <- lm(Beta ~ dose_g_per_kg * route, data = order_0_df_factor)
@@ -1596,11 +1610,11 @@ plot_model(fit_Beta_1, show.values = TRUE,  show.intercept = TRUE, value.offset 
   theme_nice()
 ```
 
-# 7. Интерпретация моделей. Влияние факторов на ФК-параметры
+# 7. Interpretation of models. Effect of factors on PK-parameters
 
-## 7.1 Влияние массы тела и площади поверхности тела на ФК-параметры
+## 7.1 The effect of body mass and body surface area on PK-parameters
 
-**Масса тела**
+**Body mass**
 
 ```{r}
 ggpredict(fit_Vd, terms = c("wt_kg", "sex"), ci_level = 0.95) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) +
@@ -1615,23 +1629,23 @@ ggpredict(fit_Vd, terms = c("wt_kg", "sex"), ci_level = 0.95) %>% plot(show_data
 fit_Vd %>% broom::tidy(conf.int = TRUE) %>% filter(term == "wt_kg") %>% 
   mutate(across(c(where(is.numeric), -p.value), ~round(.x, 3))) %>% 
   mutate(p.value = gtsummary::style_pvalue(p.value),
-         term = "Масса тела, кг") %>% 
+         term = "Body mass, kg") %>% 
   select(-statistic) %>% 
   slice_tail(n = 1) %>% 
   rename(
-    `Показатель` = term,
-    `Коэффициент (β)` = estimate,
-    `Стандартная ошибка` = std.error,
+    `Indicator` = term,
+    `Coefficient (β)` = estimate,
+    `Standard error` = std.error,
     `P-value` = p.value,
-    `Нижн. гр. 95% ДИ` = conf.low,
-    `Верхн. гр. 95% ДИ` = conf.high
+    `Lower bound of 95% CI` = conf.low,
+    `Upper bound of 95% CI` = conf.high
   ) %>% 
   flextable() %>%
-  add_header_row(., values = "Оценка коэффициента массы тела в модели Vd", colwidth = 6) %>% 
+  add_header_row(., values = "Estimation of the body mass coefficient in the Vd model", colwidth = 6) %>% 
   flex_default_fun()
 ```
 
-**Площадь поверхности тела**
+**Body surface area**
 
 ```{r}
 ggpredict(lm(V_d_0_order ~ bsa_m2 + sex, data = order_0_df),
@@ -1648,23 +1662,23 @@ lm(V_d_0_order ~ bsa_m2 + sex, data = order_0_df) %>%
   broom::tidy(conf.int = TRUE) %>% filter(term == "bsa_m2") %>% 
   mutate(across(c(where(is.numeric), -p.value), ~round(.x, 3))) %>% 
   mutate(p.value = gtsummary::style_pvalue(p.value),
-         term = "Площадь поверхности тела, м²") %>% 
+         term = "Body surface area, m²") %>% 
   select(-statistic) %>% 
   slice_tail(n = 1) %>% 
   rename(
-    `Показатель` = term,
-    `Коэффициент (β)` = estimate,
-    `Стандартная ошибка` = std.error,
+    `Indicator` = term,
+    `Coefficient (β)` = estimate,
+    `Standard error` = std.error,
     `P-value` = p.value,
-    `Нижн. гр. 95% ДИ` = conf.low,
-    `Верхн. гр. 95% ДИ` = conf.high
+    `Lower bound of 95% CI` = conf.low,
+    `Upper bound of 95% CI` = conf.high
   ) %>% 
   flextable() %>%
-  add_header_row(., values = "Оценка коэффициента площади поверхности тела в модели Vd", colwidth = 6) %>% 
+  add_header_row(., values = "Estimation of the body surface area coefficient in the Vd model", colwidth = 6) %>% 
   flex_default_fun()
 ```
 
-**Сухая масса тела**
+**Lean body mass**
 
 ```{r}
 ggpredict(Cmax_lm2_v3,
@@ -1681,22 +1695,22 @@ Cmax_lm2_v3 %>%
   broom::tidy(conf.int = TRUE) %>% filter(term == "lbm_kg") %>% 
   mutate(across(c(where(is.numeric), -p.value), ~round(.x, 4))) %>% 
   mutate(p.value = gtsummary::style_pvalue(p.value),
-         term = "Сухая масса тела, кг") %>% 
+         term = "Lean body mass, kg") %>% 
   select(-statistic) %>% 
   slice_tail(n = 1) %>% 
   rename(
-    `Показатель` = term,
-    `Коэффициент (β)` = estimate,
-    `Стандартная ошибка` = std.error,
+    `Indicator` = term,
+    `Coefficient (β)` = estimate,
+    `Standard error` = std.error,
     `P-value` = p.value,
-    `Нижн. гр. 95% ДИ` = conf.low,
-    `Верхн. гр. 95% ДИ` = conf.high
+    `Lower bound of 95% CI` = conf.low,
+    `Upper bound of 95% CI` = conf.high
   ) %>% 
   flextable() %>%
-  add_header_row(., values = "Оценка коэффициента сухой массы тела в модели Cmax", colwidth = 6) %>% 
+  add_header_row(., values = "Estimation of the lean body mass coefficient in the Cmax model", colwidth = 6) %>% 
   flex_default_fun()
 ```
 
-При увеличении массы тела на 1 кг Vd уменьшается на 0.004 (95%ДИ[0.001; 007]) л/кг, при увеличении площади поверхности тела на 1 $м^2$ Vd уменьшается на 0.311 (95%ДИ[0.032; 0.589]) л/кг.
+With an increase in body weight by 1 kg, Vd decreases by 0.004 (95% CI [0.001; 0.007]) L/kg, and with an increase in body surface area by 1 $m^2$, Vd decreases by 0.311 (95% CI [0.032; 0.589]) L/kg.
 
-При увеличении сухой массы тела на 1 кг Cmax уменьшается на 0.0086 (95%ДИ[0.0002; 0.017]) г/л.
+When lean body mass increases by 1 kg, Cmax decreases by 0.0086 (95% CI [0.0002; 0.017]) g/L.
