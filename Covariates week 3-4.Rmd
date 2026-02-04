@@ -1511,12 +1511,12 @@ resid_panel(Cmax_lm2_v2, plots = c("qq", "hist"))
 resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
 ```
 
-# Аллометрическое шкалирование с использованием фармакокинетических параметров крыс
+# Allometric scaling using rats' PK parameters
 
 ## Observed - Predicted (Wilkinson IV)
 
-```{r rat} 
-# Перевод в другую размерность
+```{r rat_data} 
+# Dataset prepararion
 rat_data_pk <-  rat_data_pk %>% 
   mutate(V_max_0_order = Beta * 60 * V_d_0_order,
          BW_g = BW_g / 1000) %>%
@@ -1525,9 +1525,9 @@ rat_data_pk <-  rat_data_pk %>%
 ```
 
 ```{r allometric_func}
-allom_scale <- function(V_rat, # в л, абсолютный объём
-                        rat_weight, # в кг
-                        human_weight = 1, # в кг, по умолчанию считаем на 1 кг
+allom_scale <- function(V_rat, # L, abs
+                        rat_weight, # kg
+                        human_weight = 1, # kg
                         n = 1)
 {
   V_human = V_rat * (human_weight / rat_weight) ^ n
@@ -1536,7 +1536,7 @@ allom_scale <- function(V_rat, # в л, абсолютный объём
 ```
 
 ```{r allometric}
-# Подготовка датасета для аллометрии
+# Human dataset preparation
 allometric <- order_0_df %>% 
   filter(!is.na(wt_kg)) %>% 
   select(study_id, subject_id, dose_g_per_kg, route, 
@@ -1547,7 +1547,7 @@ allometric <- order_0_df %>%
          Beta_obs = Beta * 60) %>% 
   relocate(c(Vd_obs, Vmax_obs, Beta_obs), .after = V_max)
 
-# Только по датасету Вилкиксон (человеческие дозы 0,5 - 0,62)
+# Only Wilkinson IV (Human dose 0,5-0,62 mg/kg)
 # allometric_IV_Wilk <- allometric %>% 
 #   filter(route == "IV",
 #          study_id == "Wilkinson-1976-IV") %>% 
@@ -1565,7 +1565,7 @@ allometric <- order_0_df %>%
 ## IV allometric scaling (main df)
 
 ```{r allometric_IV}
-# Датасет на все внутривенные значения
+# Allometric data for IV route
 allometric_IV <- allometric %>% 
   filter(route == "IV") %>% 
   crossing(rat_data_pk %>% filter(dose_g_per_kg == 0.5) %>% 
@@ -1588,15 +1588,16 @@ allometric_IV <- allometric %>%
 ```
 
 ```{r main_dose_IV}
-# Наблюдаемые значения и средняя доза для выборки
+# Observed and mean dose
 main_df_IV <- order_0_df %>% 
   filter(route == "IV" & !is.na(wt_kg)) %>% 
   mutate(Vd_obs = V_d_0_order * wt_kg,
          Vmax_obs = Beta * V_d_0_order * wt_kg * 60,
          Beta_obs = Beta * 60)
 
-mean(main_df_IV$dose_g_per_kg)
+cat("Human mean dose, IV route, g/kg:", mean(main_df_IV$dose_g_per_kg))
 ```
+
 ```{r Vd_prop_IV, fig.width=5, fig.height=3, dpi=300}
 allometric_IV %>% 
   select(contains("Vd_metr")) %>% 
@@ -1616,7 +1617,7 @@ ggplot(aes(x = Type, y = Percentage)) +
 ```
 
 ```{r Vd_visual_IV}
-# Объем распределения
+# Vd
 Vd_vis_IV <- bind_rows(
   main_df_IV %>% transmute(value = Vd_obs, model = "Observed"),
   allometric_IV %>% transmute(value = Vd_classic, model = "Allometric classic"),
@@ -1633,6 +1634,8 @@ ggplot(Vd_vis_IV, aes(x = model, y = value)) +
     subtitle = "Mean human dose = 0.57 g/kg, rat dose = 0.5 g/kg"
   )
 ```
+
+The usage of classical exponent (=1) for Vd allometric scaling shows mean error (%) from +20 to +50%. Matsumoto's exponent (=0,932) shows mean error (%) from 0% to -15%.
 
 ```{r Beta_prop_IV, fig.width=6, fig.height=4, dpi=300}
 allometric_IV %>% 
@@ -1672,6 +1675,8 @@ ggplot(Beta_vis_IV, aes(x = model, y = value)) +
 
 ```
 
+The usage of classical exponent (= 0,75 - 1) for Beta allometric scaling shows mean error (%) from -35% to -50%. Matsumoto's exponent (= 0,708 - 0,932) shows mean error (%) from -25% to -43%.
+
 ```{r Vmax_prop_IV, fig.width=6, fig.height=4, dpi=300}
 allometric_IV %>% 
   select(contains("Vmax_metr")) %>% 
@@ -1709,10 +1714,12 @@ ggplot(Vmax_vis_IV, aes(x = model, y = value)) +
   )
 ```
 
+The usage of classical exponent (= 0,75) for Vmax allometric scaling shows mean error (%) from +87 to +150%. Matsumoto's exponent (= 0,708) shows mean error (%) from +50% to +100%.
+
 ## PO allometric scaling (750 mg per kg)
 
 ```{r allometric_PO_750_mg}
-# Шкалированные значения
+# Allometric scaling
 allometric_PO <- allometric %>% 
   filter(route == "PO") %>% 
   crossing(rat_data_pk %>% filter(dose_g_per_kg == 0.75) %>% 
@@ -1728,15 +1735,16 @@ allometric_PO <- allometric %>%
 ```
 
 ```{r main_dose_PO}
-# Подготовка основного датасета
+# Human dataset preparation
 main_df_PO <- order_0_df %>% 
   filter(route == "PO" & !is.na(wt_kg)) %>% 
   mutate(Vd_obs = V_d_0_order * wt_kg,
          Vmax_obs = Beta * V_d_0_order * wt_kg * 60,
          Beta_obs = Beta * 60)
 
-mean(main_df_PO$dose_g_per_kg)
+cat("Human mean dose, PO route, g/kg):", mean(main_df_PO$dose_g_per_kg))
 ```
+
 ```{r Vd_prop_PO_750, fig.width=6, fig.height=4, dpi=300}
 allometric_PO %>% 
   select(contains("Vd_metr")) %>% 
@@ -1754,9 +1762,11 @@ ggplot(aes(x = Type, y = Percentage)) +
   ) +
   theme_bw()
 ```
+Mean error (%) for Vd allometric scaling is more than +100% up to +300% using classic allometric exponent.
+We cannot use another PK parameters due to no captured elimination phase in the rat data for this dose.
 
 ```{r Vd_visual_PO_750_mg}
-# Объем распределения
+# Vd
 Vd_vis_PO <- bind_rows(
   main_df_PO %>% transmute(value = Vd_obs, model = "Observed"),
   allometric_PO %>% transmute(value = Vd_classic, model = "Allometric classic"),
@@ -1910,3 +1920,14 @@ ggplot(Vmax_vis_PO_3, aes(x = model, y = value)) +
     subtitle = "Mean human dose = 0.58 g/kg, rat dose = 3.00 g/kg"
   )
 ```
+
+Predictive mean performance (error, %) for PO route with rat dose 3.0 g/kg: 
+
+- Vd: Allometric classic +187.82, Matsumoto +98.65;
+
+
+- Beta: Allometric classic -72.20, Matsumoto -67.97;
+
+
+- Vmax: Allometric classic +144.25, Matsumoto +94.28.
+
