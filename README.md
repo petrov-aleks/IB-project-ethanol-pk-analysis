@@ -62,7 +62,7 @@ In this project, we quantified ethanol pharmacokinetic endpoints from published 
 
 Additionally, we evaluated allometric scaling approaches using both classical power exponents and exponents proposed by Matsumoto to assess their applicability to ethanol pharmacokinetics.
 
-## Goal and objectives
+## Goal and Objectives
 
 So, the **goal of a project** is characterize ethanol pharmacokinetics (PK) using noncompartmental analysis and biostatistical methods, quantify variability, assess covariate effects, and evaluate translational scaling between human and rat PK.
 
@@ -82,7 +82,7 @@ Human ethanol pharmacokinetic data (8 datasets) [3–8] and rat data (2 datasets
 
 ![](figures/data.png)
 
-## Study plan
+## Study Plan
 
 ![](figures/study_plan.png)
 
