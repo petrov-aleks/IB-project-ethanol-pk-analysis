@@ -90,4 +90,6 @@ Human ethanol pharmacokinetic data (8 datasets) [3–8] and rat data (2 datasets
 
 ## Software Requirements
 
+Please, use renv::restore() to restore all dependencies. All packages and requirements are recorded in 'renv.lock' file.
+
 ## References
