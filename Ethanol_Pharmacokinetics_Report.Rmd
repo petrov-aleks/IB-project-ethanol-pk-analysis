@@ -1745,6 +1745,71 @@ fit_Vd %>%
   flex_default_fun()
 ```
 
+### 1.7.3. The effect of food on PK-parameters
+
+It's necessary to replace the site to food from the previous model of AUC (fit_AUC_mod_int), because you can't add them together.
+
+```{r}
+fit_AUC_mod_with_food <- lm(log(AUC) ~ dose_g_per_kg*route + food, order_0_df)
+
+summary(fit_AUC_mod_with_food, confint = TRUE, digits = 3)
+```
+
+```{r, fig.width=6, fig.height=4}
+plot_auc <- plot_model(fit_AUC_mod_with_food, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3, axis.labels = c("Dose (g per kg) x Route (PO)", "Food status (fed)", "Route (PO)", "Dose (g per kg)","Intercept")) +
+  geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
+  labs(title = "Regression coefficients for AUC with 95% CI", 
+       subtitle = "log(AUC) ~ dose_g_per_kg*route + food") +
+  theme_nice()+
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+
+plot_auc
+
+d <- plot_auc$data
+
+d$ci_label <- sprintf(
+  "[%.2f; %.2f]",
+  d$conf.low,
+  d$conf.high
+)
+```
+
+Compared with the fasted state, “fed” condition was associated with log(AUC) decreased by 0.36, AUC decreased by 30.2% (all other things being equal).Percent derived as (exp(β)−1)×100.
+
+```{r, fig.height=4, fig.width=6}
+plot_cmax <- plot_model(Cmax_lm2_v2, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3, digits = 3) +
+  geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
+  labs(title = "Regression coefficients for Cmax with 95% CI", 
+       subtitle = "log(Cmax) ~ dose_g_per_kg + route + food + sex + age") +
+  theme_nice()+
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+
+plot_cmax
+```
+
+Compared with the fasted state, “fed” condition was associated with log(Cmax) decreased by 0.286, Cmax decreased by 24.9% (all other things being equal).
+
+```{r, fig.width = 4, fig.height = 4}
+plot_beta <- plot_model(fit_Beta_1, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.5, digits = 3,   axis.labels = c("Dose (g per kg) x Route (PO)", "food (fed)","Route (PO)", "Dose (g per kg)", "Intercept")) +
+    geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
+labs(title = "Regression coefficients \n for Beta with 95% CI", 
+       subtitle = "Beta ~ dose_g_per_kg * route + food") +
+  scale_y_continuous(limits = c(-0.015, 0.015)) +
+  theme_nice()+
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+
+plot_beta
+
+d <- plot_beta$data
+
+d$ci_label <- sprintf(
+  "[%.4f; %.4f]",
+  d$conf.low,
+  d$conf.high)
+```
+
+Compared with the fasted state, “fed” condition was associated with Beta increased by 0.0004 g/L/min (all other things being equal). 
+
 # 2. Allometric scaling using rats' PK parameters
 
 ## 2.1. Data unification
