@@ -1,0 +1,2338 @@
+---
+title: "Biostatistical Analysis of Ethanol Pharmacokinetics"
+author: "Anna Vronskaia, Alexey Gordeev, Ekaterina Danilina, Milana Sagitova, Sergey Tsaregorodtsev"
+date: "2026-01-31"
+output:
+  html_document:
+    number_sections: false
+    code_folding: show
+    toc: true
+    toc_float: true
+    toc_depth: 6
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(flextable))
+library(patchwork)
+library(GGally)
+library(easystats)
+library(regressinator)
+library(broom)
+library(gridExtra)
+library(grid)
+library(ggfortify)
+library(performance)
+library(ggeffects)
+library(jtools)
+library(sjPlot)
+library(performance)
+suppressPackageStartupMessages(library(lmtest))
+suppressPackageStartupMessages(library(ggResidpanel))
+library(sandwich)
+library(ggeffects)
+library(jtools)
+library(gtsummary)
+library(ggmosaic)
+library(performance)
+library(ggResidpanel)
+library(table1)
+library(ggfortify)
+library(see)
+```
+
+```{r data_upload}
+Jones_1984 <- read.csv("data/raw/Jones-1984.csv")
+Ammon_1996 <- read.csv("data/raw/Ammon-1996.csv")
+Yelland_2008 <- read.csv("data/raw/Yelland-2008.csv")
+Emberger_2023 <- read.csv("data/raw/Thierauf-Emberger-2023.csv")
+Wilkinson_IV <- read.csv("data/raw/Wilkinson-1976-IV.csv")
+Wilkinson_PO <- read.csv("data/raw/Wilkinson-1976-PO.csv")
+Vestal_1977_elderly <- read.csv("data/raw/Vestal-1977-elderly.csv")
+Vestal_1977_young <- read.csv("data/raw/Vestal-1977-young.csv")
+
+Kozawa_2007 <- read.csv("data/raw/Kozawa-2007.csv")
+Eriksson_1977 <- read.csv("data/raw/Eriksson-1977.csv")
+```
+
+```{r theme_set}
+standard_theme <- theme_bw() +
+  theme(plot.title = element_text(size = 30, hjust = 0.5),
+    plot.subtitle = element_text(size = 25, hjust = 0.5),
+    plot.caption = element_text(size = 20),
+    axis.title = element_text(size = 25),
+    axis.text.y = element_text(size = 20),
+    axis.text.x = element_text(size = 20),
+    legend.title = element_text(size = 20),
+    legend.text = element_text(size = 22),
+    strip.text = element_text(size = 22))
+theme_set(standard_theme)
+set_flextable_defaults(table.layout = "autofit")
+flex_default_fun <- function(x) {
+  x %>% 
+  theme_box() %>%
+  font(fontname = "Times New Roman", part = "all") %>% 
+  fontsize(size = 13, part = "header") %>% 
+  fontsize(size = 12, part = "body") %>% 
+  flextable::align(
+  i = 1,
+  j = NULL,
+  align = "center",
+  part = "header")
+}
+```
+
+# 1. Human data
+
+## 1.1 Data unification
+
+```{r ammon_clean}
+Ammon_1996_clean <- Ammon_1996 %>% 
+  mutate(case = paste(subject_id, occasion, sep = "-")) %>% 
+  mutate(route = route %>% str_remove_all(" infusion")) %>% 
+  rename(infusion_duration_min = duration_inf_min)
+rm(Ammon_1996)
+```
+
+```{r jones_clean}
+Jones_1984_clean <- Jones_1984 %>% 
+  mutate(subject_id = paste("J", subject_id, sep = "-"),
+         sex = case_when(sex == "male" ~ "M",
+                         sex == "female" ~ "F"))
+rm(Jones_1984)
+```
+
+```{r yelland_clean}
+Yelland_2008_clean <- Yelland_2008 %>% 
+  mutate(case = paste(subject_id, occasion, sep = "-"))
+rm(Yelland_2008)
+```
+
+```{r emberger_clean}
+Emberger_2023_clean <- Emberger_2023 %>% 
+  filter(!is.na(conc_g_per_L)) %>% 
+  rename(wt_kg = WT_kg,
+         sex = Sex,
+         age = Age,
+         bh_cm = BH_cm,
+         bmi = BMI) %>% 
+  mutate(subject_id = str_c("TE", "-", subject_id))
+rm(Emberger_2023)
+```
+
+```{r wilkinson_iv_clean}
+Wilkinson_IV_clean <- Wilkinson_IV %>% 
+  filter(!is.na(conc_g_per_L)) %>% 
+  mutate(route = route %>% str_remove_all(" infusion")) %>% 
+  rename(wt_kg = WT_kg,
+         sex = Sex)
+rm(Wilkinson_IV)
+```
+
+```{r wilkinson_po_clean}
+Wilkinson_PO_clean <- Wilkinson_PO %>% 
+  filter(!is.na(conc_g_per_L)) %>% 
+  mutate(case = paste(subject_id, occasion, sep = "-")) %>% 
+  rename(wt_kg = WT_kg,
+         sex = Sex,
+         bh_cm = BH_cm,
+         bsa_m2 = BSA_m2,
+         age = Age)  
+rm(Wilkinson_PO)
+```
+
+```{r westal_old_clean}
+Vestal_1977_e_pk <- Vestal_1977_elderly %>% 
+rename_with(tolower) %>% 
+  rename(Cmax = cmax_mg_dl) %>% 
+  mutate(Cmax = Cmax / 100,
+         route = case_when(
+           str_detect(str_to_lower(route), "iv") ~ "IV",
+           str_detect(str_to_lower(route), "po") ~ "PO"),
+         subject_id = str_c("V-E-", subject_id))
+rm(Vestal_1977_elderly)
+```
+
+```{r vestal_young_clean}
+Vestal_1977_y_pk <- Vestal_1977_young %>% 
+rename_with(tolower) %>% 
+  rename(Cmax = cmax_mg_dl) %>% 
+  mutate(Cmax = Cmax / 100,
+         route = case_when(
+           str_detect(str_to_lower(route), "iv") ~ "IV",
+           str_detect(str_to_lower(route), "po") ~ "PO"),
+         subject_id = str_c("V-Y-", subject_id))  
+rm(Vestal_1977_young)
+```
+
+## 1.2. Data plots
+
+### 1.2.1. Individual curves concentration-time
+
+```{r ammon_ind_plot, fig.width=24, fig.height=16, dpi=300}
+Ammon_1996_clean %>% 
+  select(subject_id, conc_g_per_L, time_min, occasion) %>% 
+  mutate(occasion = occasion %>% as.factor) %>% 
+  ggplot(aes(color = occasion)) +
+  geom_line(aes(x = time_min, y = conc_g_per_L, group = occasion), linewidth = 2) +
+  facet_wrap(subject_id~.)+
+  scale_x_continuous(breaks = seq(0, 420, by = 50))+
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25))+
+    labs(title = "Concentration-time plot", subtitle = "Individual curves for each subject", x = "Time, min", y = "Concentration, g/L", color = "Визит", caption = "Source: Ammon-1996")+
+  theme(legend.position = "top")
+```
+
+```{r jones_ind_plot, fig.height=12, fig.width=15, dpi=300}
+ggplot(Jones_1984_clean, aes(x = time_min, y = conc_g_per_L)) +
+  geom_line(aes(group = subject_id)) +
+  scale_y_continuous(breaks = seq(0, 1.4, 0.1)) +
+  scale_x_continuous(breaks = seq(0, 420, 30)) +
+  # coord_cartesian(xlim = c(60, 420)) +
+  labs(title = "Concentration-time plot",
+       subtitle = "Individual curves for each subject",
+       caption = "Source: Jones-1984",
+       x = "Time, min",
+       y = "Concentration, g/L")
+```
+
+```{r yelland_ind_plot, fig.width=24, fig.height=16, dpi=300}
+Yelland_2008_clean %>% 
+  select(subject_id, conc_g_per_L, time_min, occasion) %>% 
+  mutate(occasion = occasion %>% as.factor) %>% 
+  ggplot(aes(color = occasion)) +
+  geom_line(aes(x = time_min, y = conc_g_per_L, group = occasion), linewidth = 2) +
+  facet_wrap(subject_id~.)+
+  scale_x_continuous(breaks = seq(0, 420, by = 50))+
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25))+
+    labs(title = "Concentration-time plot", subtitle = "Individual curves for each subject", x = "Time, min", y = "Concentration, g/L", color = "Occasion", caption = "Source: Yelland-2008")+
+  theme(legend.position = "top")
+```
+
+```{r emberger_ind_plot, fig.width=24, fig.height=16}
+Emberger_2023_clean %>% 
+  select(subject_id, conc_g_per_L, time_min) %>% 
+  mutate(subject_id = subject_id %>% str_remove_all("TE-")) %>%
+  ggplot(aes(color = subject_id)) +
+  geom_line(aes(x = time_min, y = conc_g_per_L, group = subject_id), linewidth = 2) +
+  scale_x_continuous(breaks = seq(0, 420, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +
+  scale_color_discrete(breaks = as.character(1:10)) +
+    labs(title = "Concentration-time plot",
+         subtitle = "Individual curves for each subject", 
+         x = "Time, min", y = "Concentration, g/L",
+         color = "Subject", 
+         caption = "Source: Thierauf-Emberger-2023") +
+  theme(legend.position = "top")
+```
+
+```{r wilkinson_iv_ind_plot, fig.height=12, fig.width=15, dpi=300}
+ggplot(Wilkinson_IV_clean, aes(x = time_min, y = conc_g_per_L)) +
+  geom_line(aes(group = subject_id)) +
+  scale_y_continuous(breaks = seq(0, 1.4, 0.1)) +
+  scale_x_continuous(breaks = seq(0, 510, 30)) +
+  # coord_cartesian(xlim = c(60, 420)) +
+  labs(title = "Concentration-time plot",
+       subtitle = "Individual curves for each subject",
+       caption = "Source: Wilkinson-1976-IV",
+       x = "Time, min",
+       y = "Concentration, g/L")
+```
+
+```{r wilkinson_po_ind_plot, fig.width=20, fig.height=14}
+Wilkinson_PO_clean %>%
+  select(subject_id, conc_g_per_L, time_min, occasion) %>% 
+  mutate(occasion = occasion %>% as.factor) %>% 
+  ggplot(aes(color = occasion)) +
+  geom_line(aes(x = time_min, y = conc_g_per_L, group = occasion), linewidth = 2) +
+  facet_wrap(subject_id~.)+
+  scale_x_continuous(breaks = seq(0, 420, by = 50))+
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25))+
+    labs(title = "Concentration-time plot", subtitle = "Individual curves for each subject", x = "Time, min", y = "Concentration, g/L", color = "Occasion", caption = "Source: Wilkinson-1976-PO")+
+  theme(legend.position = "top")
+```
+
+### 1.2.2. Mean и standard deviation of concentration
+
+In each time point time is averaged.
+
+```{r ammon_mean_sd_plot, fig.width=24, fig.height=16, dpi=300, message=FALSE}
+Ammon_1996_clean %>% 
+  group_by(case) %>%
+  mutate(point_id = row_number() %>% as.factor) %>% 
+  ungroup() %>%
+  mutate(occasion = occasion %>% as.factor) %>% 
+  group_by(occasion, point_id) %>% 
+  summarise(conc_avg = mean(conc_g_per_L), conc_max = mean(conc_g_per_L) + sd(conc_g_per_L), conc_min = mean(conc_g_per_L) - sd(conc_g_per_L), time_min_avg = mean(time_min)) %>% 
+  ungroup() %>% 
+  ggplot() +
+  geom_line(aes(x = time_min_avg, y = conc_avg, group = occasion, color = occasion)) +
+  geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
+  scale_x_continuous(breaks = seq(0, 400, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
+  labs(title = "Concentration-time plot",
+       subtitle = "Mean ± SD",
+       x = "Time, min",
+       y = "Concentration, g/L",
+       color = "Occasion",
+       caption = "Source: Ammon-1996")
+```
+
+```{r jones_mean_sd_plot, fig.height=12, fig.width=15, dpi=300}
+Jones_1984_clean %>% 
+  group_by(subject_id) %>%
+  mutate(point_id = row_number() %>% as.factor) %>% 
+  ungroup() %>% 
+  group_by(point_id) %>% 
+  summarise(conc_avg = mean(conc_g_per_L), conc_max = mean(conc_g_per_L) + sd(conc_g_per_L), conc_min = mean(conc_g_per_L) - sd(conc_g_per_L), time_min_avg = mean(time_min)) %>% 
+  ggplot() +
+  geom_line(aes(x = time_min_avg, y = conc_avg)) +
+  geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
+  scale_x_continuous(breaks = seq(0, 400, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
+  labs(title = "Concentration-time plot",
+       subtitle = "Mean ± SD",
+       x = "Time, min",
+       y = "Concentration, g/L",
+       caption = "Source: Jones-1984")
+```
+
+```{r yelland_mean_sd_plot, fig.width=16, fig.height=9, dpi=300, message=FALSE}
+Yelland_2008_clean %>%
+  group_by(case) %>%
+  mutate(point_id = row_number() %>% as.factor) %>% 
+  ungroup() %>%
+  mutate(occasion = occasion %>% as.factor) %>% 
+  group_by(occasion, point_id) %>% 
+  summarise(conc_avg = mean(conc_g_per_L), conc_max = mean(conc_g_per_L) + sd(conc_g_per_L), conc_min = mean(conc_g_per_L) - sd(conc_g_per_L), time_min_avg = mean(time_min)) %>% 
+  ungroup() %>% 
+  ggplot() +
+  geom_line(aes(x = time_min_avg, y = conc_avg, group = occasion, color = occasion)) +
+  geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
+  scale_x_continuous(breaks = seq(0, 400, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
+  labs(title = "Concentration-time plot",
+       subtitle = "Mean ± SD",
+       x = "Time, min",
+       y = "Concentration, g/L",
+       color = "Occasion",
+       caption = "Source: Yelland-2008")
+```
+
+```{r emberger_mean_sd_plot, fig.width=24, fig.height=16, dpi=300}
+Emberger_2023_clean %>% 
+  group_by(subject_id) %>%
+  mutate(point_id = row_number() %>% as.factor) %>% 
+  ungroup() %>% 
+  group_by(point_id) %>% 
+  summarise(conc_avg = mean(conc_g_per_L), conc_max = mean(conc_g_per_L) + sd(conc_g_per_L), conc_min = mean(conc_g_per_L) - sd(conc_g_per_L), time_min_avg = mean(time_min)) %>% 
+  ggplot() +
+  geom_line(aes(x = time_min_avg, y = conc_avg)) +
+  geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
+  scale_x_continuous(breaks = seq(0, 400, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
+  labs(title = "Concentration-time plot",
+       subtitle = "Mean ± SD",
+       x = "Time, min",
+       y = "Concentration, g/L",
+       caption = "Source: Thierauf-Emberger-2023")
+```
+
+```{r wilkinson_iv_mean_sd_plot, fig.width=24, fig.height=16, dpi=300}
+Wilkinson_IV_clean %>% 
+  group_by(subject_id) %>%
+  mutate(point_id = row_number() %>% as.factor) %>% 
+  ungroup() %>% 
+  group_by(point_id) %>% 
+  summarise(conc_avg = mean(conc_g_per_L), conc_max = mean(conc_g_per_L) + sd(conc_g_per_L), conc_min = mean(conc_g_per_L) - sd(conc_g_per_L), time_min_avg = mean(time_min)) %>% 
+  filter(as.numeric(point_id) < 27) %>% 
+  ggplot() +
+  geom_line(aes(x = time_min_avg, y = conc_avg)) +
+  geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
+  scale_x_continuous(breaks = seq(0, 400, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
+  labs(title = "Concentration-time plot",
+       subtitle = "Mean ± SD",
+       x = "Time, min",
+       y = "Concentration, g/L",
+       caption = "Source: Wilkinson-1976-IV")  
+```
+
+```{r wilkinson_po__mean_sd_plot, fig.width=24, fig.height=16, dpi=300}
+Wilkinson_PO_clean %>%
+  group_by(case) %>%
+  mutate(point_id = row_number() %>% as.factor) %>% 
+  ungroup() %>% 
+  group_by(point_id) %>% 
+  summarise(conc_avg = mean(conc_g_per_L), conc_max = mean(conc_g_per_L) + sd(conc_g_per_L), conc_min = mean(conc_g_per_L) - sd(conc_g_per_L), time_min_avg = mean(time_min)) %>% 
+  ggplot() +
+  geom_line(aes(x = time_min_avg, y = conc_avg)) +
+  geom_errorbar(aes(x = time_min_avg, ymin = conc_min, ymax = conc_max), width = 6, linewidth = 0.5) +
+  scale_x_continuous(breaks = seq(0, 400, by = 50)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.25)) +    
+  labs(title = "Concentration-time plot",
+       subtitle = "Mean ± SD",
+       x = "Time, min",
+       y = "Concentration, g/L",
+       caption = "Source: Wilkinson-1976-PO")  
+```
+
+## 1.3. Evaluation of PK-parameters
+
+```{r pk_calc_functions}
+#k is how much we add to the tmax index
+pharma_fun <- function(conc, t, dose, k = 1) {
+  # Modeling for calculation beta, C0, Vd 0 order
+  t_sample <- {{t}}[(first(which.max({{conc}})) + k):length({{t}})]
+  conc_sample <- conc[(first(which.max({{conc}})) + k):length({{conc}})]
+  dose <- first({{dose}})
+  model <- lm(conc_sample ~ t_sample)
+  Beta <- -as.numeric(model$coefficients[2])
+  C_0_0_order <- as.numeric(model$coefficients[1])
+  V_d_0_order <- dose / C_0_0_order
+  
+  # Modeling for calculation kel, C0, Vd 1 order
+  # indexes <- conc_sample > 0
+  # model_1 <- lm(log(conc_sample[indexes]) ~ t_sample[indexes])
+  # Kel <- -as.numeric(model_1$coefficients[2])
+  # C_0_1_order <- exp(as.numeric(model_1$coefficients[1]))
+  # V_d_1_order <- dose / C_0_1_order
+  
+  # Calculation of AUC0-t
+  
+  # if (length({{t}}) < 2) AUC <- NA
+  # if (anyNA({{t}}) | anyNA({{conc}})) AUC <- NaN
+  t0 = {{t}}[-length({{t}})]
+  t1 = {{t}}[-1]
+  c0 = {{conc}}[-length({{conc}})]
+  c1 = {{conc}}[-1]
+  AUC = sum(((c0 + c1)/2)*(t1 - t0))
+  
+  # Calculation of Cmax
+  cmax <- max(conc)
+  
+  # Calculation of Tmax
+  tmax <- t[first(which.max(conc))]
+  
+  # Calculation of CL (roughly)
+  cl = dose/AUC #l/(kg*min)
+  # V = CL/Kel 
+  
+  return(list(Beta = Beta,
+              # Kel = Kel,
+              C_0_0_order = C_0_0_order,
+              V_d_0_order = V_d_0_order,
+              # C_0_1_order = C_0_1_order,
+              # V_d_1_order = V_d_1_order,
+              AUC = AUC,
+              Cmax = cmax,
+              Tmax = tmax,
+              CL = cl))
+}
+
+stat_ph <- list(
+        "Mean" = ~mean(., na.rm = TRUE) %>% round(4),
+        "Median" = ~median(., na.rm = TRUE)%>% round(4),
+        "Standard deviation"   = ~sd(., na.rm = TRUE) %>% round(4),
+        "Coefficient of variation (CV), %" = ~round((sd(., na.rm = TRUE))/(mean(., na.rm = TRUE)) * 100, 2)
+        )
+
+```
+
+```{r jones_pk}
+Jones_1984_pk <- Jones_1984_clean %>% 
+  arrange(time_min) %>% 
+  nest(.by = subject_id, .key = "subject_data") %>% 
+  mutate(pharma = purrr::map(subject_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-subject_data)
+
+Jones_1984_pk <- Jones_1984_clean %>% 
+  select(-c(time_min, conc_g_per_L)) %>% 
+  group_by(subject_id) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  right_join(Jones_1984_pk)
+rm(Jones_1984_clean)
+```
+
+```{r ammon_pk}
+Ammon_1996_pk <- Ammon_1996_clean %>% 
+  arrange(time_min) %>% 
+  nest(.by = case, .key = "subject_data") %>% 
+  mutate(pharma = purrr::map(subject_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-subject_data)
+
+Ammon_1996_pk <- Ammon_1996_clean %>%
+  select(-c(time_min, conc_g_per_L)) %>%
+  group_by(case) %>%
+  slice(1) %>%
+  ungroup() %>%
+  right_join(Ammon_1996_pk, by = join_by(case)) %>% 
+  mutate(subject_id = str_c("A-IV-", subject_id)) %>% 
+  select(-case)
+rm(Ammon_1996_clean)
+```
+
+```{r yelland_pk}
+Yelland_2008_pk <- Yelland_2008_clean %>% 
+  arrange(time_min) %>% 
+  nest(.by = case, .key = "subject_data") %>% 
+  mutate(pharma = purrr::map(subject_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>%
+  select(-subject_data)
+
+Yelland_2008_pk <- Yelland_2008_clean %>%
+  select(-c(time_min, conc_g_per_L)) %>%
+  group_by(case) %>%
+  slice(1) %>%
+  ungroup() %>%
+  right_join(Yelland_2008_pk, by = join_by(case)) %>%
+  mutate(subject_id = str_c("Y-", subject_id)) %>% 
+  select(-case)
+rm(Yelland_2008_clean)
+```
+
+```{r emberger_pk}
+Emberger_2023_pk <- Emberger_2023_clean %>% 
+  arrange(time_min) %>% 
+  nest(.by = subject_id, .key = "subject_data") %>% 
+  mutate(pharma = purrr::map(subject_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-subject_data)
+
+Emberger_2023_pk <- Emberger_2023_clean %>% 
+  select(-c(time_min, conc_g_per_L)) %>% 
+  group_by(subject_id) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  right_join(Emberger_2023_pk)
+rm(Emberger_2023_clean)
+```
+
+```{r wilkinson_iv_pk}
+Wilkinson_IV_pk <- Wilkinson_IV_clean %>% 
+  arrange(time_min) %>% 
+  nest(.by = subject_id, .key = "subject_data") %>% 
+  mutate(pharma = purrr::map(subject_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-subject_data)
+
+Wilkinson_IV_pk <- Wilkinson_IV_clean %>% 
+  select(-c(time_min, conc_g_per_L)) %>% 
+  group_by(subject_id) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  right_join(Wilkinson_IV_pk) %>% 
+  mutate(subject_id = str_c("W-IV-", subject_id))
+rm(Wilkinson_IV_clean)
+```
+
+```{r wilkinson_po_pk}
+Wilkinson_PO_pk <- Wilkinson_PO_clean %>% 
+  arrange(time_min) %>% 
+  nest(.by = case, .key = "subject_data") %>% 
+  mutate(pharma = purrr::map(subject_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-subject_data)
+
+Wilkinson_PO_pk <- Wilkinson_PO_clean %>%
+  select(-c(time_min, conc_g_per_L)) %>%
+  group_by(case) %>%
+  slice(1) %>%
+  ungroup() %>%
+  right_join(Wilkinson_PO_pk, by = join_by(case)) %>% 
+  mutate(subject_id = str_c("W-PO-", subject_id)) %>% 
+  select(-case)
+rm(Wilkinson_PO_clean)
+```
+
+## 1.4. Binding datasets
+
+```{r join-all}
+main_df <- bind_rows(Ammon_1996_pk,
+                     Emberger_2023_pk,
+                     Jones_1984_pk,
+                     Wilkinson_IV_pk,
+                     Wilkinson_PO_pk,
+                     Yelland_2008_pk,
+                     Vestal_1977_e_pk,
+                     Vestal_1977_y_pk)
+
+main_df <- main_df %>% 
+  mutate(across(c(where(is.character), occasion, infusion_duration_min, -subject_id), ~as.factor(.x)))
+```
+
+```{r zero-first-orders-df}
+# Only mean values by visits (the assumption of independence of observations is fulfilled)
+WILK <- main_df %>% 
+  filter(study_id == "Wilkinson-1976-PO") %>% 
+  arrange(desc(dose_g_per_kg), .by_group = TRUE) %>% 
+  group_by(subject_id) %>% 
+  slice(1)
+order_0_df <- main_df %>%
+  filter(study_id != "Wilkinson-1976-PO") %>%
+  group_by(subject_id) %>% 
+  mutate(across(c(Beta, C_0_0_order, V_d_0_order, AUC, Cmax, Tmax), ~mean(.x))) %>%
+  slice(1) %>% 
+  ungroup() %>% 
+  select(-occasion) %>% 
+  bind_rows(WILK) %>% 
+  select(-c(
+    # Kel, 
+    occasion #,
+    # contains("1_order")
+    )) 
+
+# nrow(order_0_df)
+# length(unique(order_0_df$subject_id))
+# order_1_df <- main_df %>% filter(Cmax < 0.23)
+```
+
+## 1.5. Exploratory analysis
+
+### 1.5.1. Tables
+
+```{r}
+main_df %>% 
+  select(-subject_id) %>% 
+  gtsummary::tbl_summary()
+```
+
+```         
+1.  PK-parameters (endpoints)
+•   AUC, Cmax, 
+•   C0_0, C0_1
+•   Beta, Kel, 
+•   Tmax
+•   Vd_0,Vd_1
+•   CL
+2. Experimental conditions
+•   Dose (g/kg)
+•   Route (IV/PO)
+•   Occasion (1/2/NA)
+•   Food (fed/fasted)
+•   Infusion_duration_min
+•   Study_id
+3.  Patient's personal data
+•   WT, BH, BMI, BSA, LBM
+•   Sex, Age
+```
+
+```{r}
+label(main_df$study_id)   <- "Study"
+label(main_df$sex)   <- "Sex"
+label(main_df$dose_g_per_kg)    <- "Dose"
+label(main_df$food) <- "Food"
+label(main_df$site) <- "Blood sampling"
+label(main_df$age) <- "Age"
+label(main_df$route) <- "Route"
+
+units(main_df$dose_g_per_kg)   <- "g per kg"
+units(main_df$age)   <- "years"
+
+tbl_output <- table1(~ study_id + dose_g_per_kg + food + site + age + sex|route, data = main_df, render.missing = NULL, overall=c(left="Total"))
+
+
+tbl_output
+```
+
+```{r distribution-plots, error=FALSE, warning=FALSE, fig.width=12, fig.height=8, dpi=300}
+
+main_df_long <- main_df %>% 
+  select(where(is.numeric)) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+ggplot(main_df_long, aes(x = value)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  labs(x = NULL, y = NULL)
+```
+
+```{r density-plots, fig.width=12, fig.height=8, dpi=300}
+ggplot(main_df_long, aes(x = value)) +
+  geom_density(na.rm = TRUE) +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  labs(x = NULL, y = NULL)
+```
+
+We can take the logarithm of variables with right-sided skewness (V_d_0, AUC, CL)
+
+```{r density_plot_log, fig.width=12, fig.height=8, dpi=300}
+
+main_df_log_long <- main_df %>% 
+  mutate(across(c(
+    # Kel,
+    V_d_0_order,
+    # V_d_1_order,
+    # C_0_1_order,
+    AUC,
+    CL), function(x) log(x))) %>% 
+  select(where(is.numeric)) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+ggplot(main_df_log_long, aes(x = value)) +
+  geom_density(na.rm = TRUE) +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  labs(x = NULL, y = NULL)
+```
+
+```{r factor-variables-distribution}
+main_df_fac_long <- main_df %>% 
+  select(where(is.factor)) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+ggplot(main_df_fac_long, aes(x = value)) +
+  geom_bar() +
+  facet_wrap(~ variable, scales = "free_x") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = NULL, y = NULL)
+
+```
+
+### 1.5.2. Boxplots
+
+```{r theme_custom}
+theme_custom <- theme(
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 14),
+    plot.title = element_text(size = 20, hjust = 0.5),
+    plot.subtitle = element_text(size = 16, hjust = 0.5),
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 14),
+    panel.background = element_rect(fill = "white"), 
+    panel.grid = element_blank()
+  )
+
+gender_colours <- c(
+      "M" = "#8694AC",
+      "F" = "#f28482"
+    )
+
+route_colours <- c(
+      "IV" = "#DDB892",
+      "PO" = "#BAC893"
+    )
+
+food_colours <- c(
+      "fed" = "#FFB35C",
+      "fasted" = "#CDE8F4"
+    )
+
+site_colours <- c(
+      "capillary" = "#FE3448",
+      "venous" = "#7C7F65"
+    )
+
+gender_fill <- scale_fill_manual(
+    name = "Sex",
+    values = gender_colours
+  )
+
+route_fill <- scale_fill_manual(
+    name = "Route",
+    values = route_colours
+  )
+
+food_fill <- scale_fill_manual(
+    name = "Food",
+    values = food_colours
+  )
+
+site_fill <- scale_fill_manual(
+    name = "Site",
+    values = site_colours
+  )
+
+
+gender_color <- scale_colour_manual(
+    name = "Sex",
+    values = gender_colours
+  )
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p1 <- main_df %>% 
+  filter(!is.na(sex)) %>% 
+  ggplot(aes(x = sex, y = Tmax)) +
+  geom_violin(aes(fill = sex)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  gender_fill
+
+p2 <- main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = Tmax, fill = sex), colour = "gray40") + 
+  theme_custom + 
+  gender_fill
+
+p1 + p2 + plot_annotation(title = "Distribution of Tmax by gender", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p3 <- main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot(aes(x = sex, y = Cmax)) +
+  geom_violin(aes(fill = sex)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  gender_fill
+
+p4 <-  main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = Cmax, fill = sex), colour = "gray40") + 
+  theme_custom + 
+  gender_fill
+
+p3 + p4 + plot_annotation(title = "Distribution of Cmax by gender", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p5 <- main_df %>% 
+  filter(!is.na(sex)) %>% 
+  ggplot(aes(x = sex, y = AUC)) +
+  geom_violin(aes(fill = sex)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  gender_fill
+
+p6 <- main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = AUC, fill = sex), colour = "gray40") + 
+  theme_custom + 
+  gender_fill
+
+p5 + p6 + plot_annotation(title = "Distribution of AUC by gender", theme = theme(plot.title = element_text(size = 20)))
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p7 <- main_df %>% 
+  ggplot(aes(x = route, y = Tmax)) +
+  geom_violin(aes(fill = route)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom +
+  route_fill
+
+p8 <- main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Tmax, fill = route), colour = "gray40") + 
+  theme_custom +
+  route_fill
+
+p7 + p8 + plot_annotation(title = "Distribution of Tmax by route", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p9 <- main_df %>% 
+  ggplot(aes(x = route, y = Cmax)) +
+  geom_violin(aes(fill = route)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  route_fill
+
+p10 <-  main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Cmax, fill = route), colour = "gray40") + 
+  theme_custom + 
+  route_fill
+
+p9 + p10 + plot_annotation(title = "Distribution of Cmax by route", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p11 <- main_df %>% 
+  ggplot(aes(x = route, y = AUC)) +
+  geom_violin(aes(fill = route)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  route_fill
+
+p12 <- main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = AUC, fill = route), colour = "gray40") + 
+  theme_custom + 
+  route_fill
+
+p11 + p12 + plot_annotation(title = "Distribution of AUC by route", theme = theme(plot.title = element_text(size = 20)))
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p13 <- main_df %>% 
+  ggplot(aes(x = food, y = Tmax)) +
+  geom_violin(aes(fill = food)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom +
+  food_fill
+
+p14 <- main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Tmax, fill = food), colour = "gray40") + 
+  theme_custom +
+  food_fill
+
+p13 + p14 + plot_annotation(title = "Distribution of Tmax by food consumption", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p15 <- main_df %>% 
+  ggplot(aes(x = food, y = Cmax)) +
+  geom_violin(aes(fill = food)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  food_fill
+
+p16 <-  main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Cmax, fill = food), colour = "gray40") + 
+  theme_custom + 
+  food_fill
+
+p15 + p16 + plot_annotation(title = "Distribution of Cmax by food consumption", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p17 <- main_df %>% 
+  ggplot(aes(x = food, y = AUC)) +
+  geom_violin(aes(fill = food)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  food_fill
+
+p18 <- main_df %>% 
+  filter(!is.na(sex)) %>%
+  ggplot()+
+  geom_histogram(aes(x = AUC, fill = food), colour = "gray40") + 
+  theme_custom + 
+  food_fill
+
+p17 + p18 + plot_annotation(title = "Distribution of AUC by food consumption", theme = theme(plot.title = element_text(size = 20)))
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p19 <- main_df %>% 
+  ggplot(aes(x = site, y = Tmax)) +
+  geom_violin(aes(fill = site)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom +
+  site_fill
+
+p20 <- main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Tmax, fill = site), colour = "gray40") + 
+  theme_custom +
+  site_fill
+
+p19 + p20 + plot_annotation(title = "Distribution of Tmax by blood sampling", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p21 <- main_df %>% 
+  ggplot(aes(x = site, y = Cmax)) +
+  geom_violin(aes(fill = site)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  site_fill
+
+p22 <-  main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = Cmax, fill = site), colour = "gray40") + 
+  theme_custom + 
+  site_fill
+
+p21 + p22 + plot_annotation(title = "Distribution of Cmax by blood sampling", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=5}
+p23 <- main_df %>% 
+  ggplot(aes(x = site, y = AUC)) +
+  geom_violin(aes(fill = site)) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5)+
+  geom_jitter(color = "gray40", alpha = 0.5, size = 1.5)+
+  theme(
+    legend.position = "none"
+  ) + 
+  theme_custom + 
+  site_fill
+
+p24 <-  main_df %>% 
+  ggplot()+
+  geom_histogram(aes(x = AUC, fill = site), colour = "gray40") + 
+  theme_custom + 
+  site_fill
+
+p23 + p24 + plot_annotation(title = "Distribution of AUC by blood sampling", theme = theme(plot.title = element_text(size = 20)))
+  
+```
+
+```{r Correlation, fig.height=8, fig.width=14, dpi = 200}
+pk_num <- main_df %>% 
+  select(where(is.numeric)) %>% 
+  select(-lbm_kg, -bsa_m2, -bh_cm, -bmi) #лишние убрал
+
+
+cor_mat <- cor(pk_num, use = "pairwise.complete.obs")
+
+cor_mat %>% 
+  ggcorr(., label = TRUE)
+  
+```
+
+Testing hypotheses about differences between groups by category "food" and "site"
+
+H0: mean (fasted) = mean(fed) H1: mean (fasted) != mean(fed)
+
+```{r t-test в группах по food}
+t.test(log(AUC) ~ food, data = order_0_df) 
+
+t.test(log(Cmax) ~ food, data = order_0_df)
+
+t.test(Tmax ~ food, data = order_0_df)
+
+t.test(Beta ~ food, data = order_0_df)
+
+t.test(C_0_0_order ~ food, data = order_0_df)
+
+t.test(V_d_0_order ~ food, data = order_0_df)
+
+```
+
+H0: mean (capillary) = mean(venous) H1: mean (capillary) != mean(venous)
+
+```{r t-test в группах по site}
+t.test(log(AUC) ~ site, data = order_0_df) 
+
+t.test(log(Cmax) ~ site, data = order_0_df)
+
+t.test(Tmax ~ site, data = order_0_df)
+
+t.test(Beta ~ site, data = order_0_df)
+
+t.test(C_0_0_order ~ site, data = order_0_df)
+
+t.test(V_d_0_order ~ site, data = order_0_df)
+```
+
+Testing hypotheses about differences between groups by category "route" and "sex".
+
+```{r t-test 0_order route_sex}
+t.test(Beta ~ route, data = order_0_df) 
+
+t.test(Beta ~ sex, data = order_0_df)
+
+t.test(V_d_0_order ~ route, data = order_0_df) 
+
+t.test(V_d_0_order ~ sex, data = order_0_df)
+
+t.test(log(AUC) ~ route, data = order_0_df) 
+
+t.test(log(AUC) ~ sex, data = order_0_df)
+
+t.test(Cmax ~ route, data = order_0_df)
+
+t.test(Cmax ~ sex, data = order_0_df)
+
+t.test(Tmax ~ route, data = order_0_df)
+
+t.test(Tmax ~ sex, data = order_0_df)
+```
+
+**Results**: The administration route groups differed in all pharmacokinetic parameters. The gender groups differed in all pharmacokinetic parameters except Tmax.
+
+
+## 1.6. Main Regression Analysis
+
+### 1.6.1. Regression models for AUC
+
+#### 1.6.1.1. Additive model with main variables (dose, route of administration, blood sampling method)
+
+log(AUC) \~ dose_g_per_kg + route + site
+
+```{r fit_lm}
+fit_AUC_mod <- lm(log(AUC) ~ dose_g_per_kg + route + site, order_0_df) #+food
+fit_AUC_submod <- lm(log(AUC) ~ 1, order_0_df)
+
+#broom::tidy(fit_AUC_mod, conf.int = TRUE)
+#broom::tidy(fit_AUC_submod, conf.int = TRUE)
+
+summ(fit_AUC_mod, confint = TRUE, digits = 3)
+#summary(fit_AUC_mod)
+#summary(fit_AUC_submod)
+
+anova(fit_AUC_mod, fit_AUC_submod)
+```
+
+```{r, fig.width=8, fig.height=10}
+check_model(fit_AUC_mod)
+```
+
+```{r}
+ggpredict(fit_AUC_mod, terms = c("dose_g_per_kg", "route", "site"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.7626")
+```
+
+```{r, fig.width=7, fig.height=5, dpi=300}
+plot_coefs(fit_AUC_mod, omit.coefs = NULL, scale = TRUE, ci_level = 0.95, plot.distributions = FALSE, inner_ci_level = .1, colors = "CUD") + labs(title = "Regression coeffecients with 95% CI")
+```
+
+```{r, include=FALSE}
+table(order_0_df$site, order_0_df$food)
+```
+
+#### 1.6.1.2. Additive model with additional variables
+
+log(AUC) \~ dose_g_per_kg + route + site + sex
+
+```{r fit_lm_add}
+fit_AUC_mod_add <- lm(log(AUC) ~ dose_g_per_kg + route + site + sex, order_0_df) #age cannot be added
+
+summ(fit_AUC_mod, confint = TRUE, digits = 3)
+summ(fit_AUC_mod_add, confint = TRUE, digits = 3)
+
+
+# summary(fit_AUC_mod)
+# summary(fit_AUC_mod_add)
+
+
+#anova(fit_AUC_mod, fit_AUC_mod_add) Anova does not work with variable sex
+```
+
+```{r, fig.width=8, fig.height=10}
+check_model(fit_AUC_mod_add)
+```
+
+```{r, include=FALSE}
+order_0_df %>% filter(!is.na(age)) %>% select(dose_g_per_kg, site, route, age)
+# dose 0.57 clearly corresponds to route IV
+```
+
+```{r}
+ggpredict(fit_AUC_mod_add, terms = c("dose_g_per_kg", "route", "site", "sex")) %>% plot(show_data = TRUE, log_y = F, jitter = .01) #+ labs(subtitle = "Adjusted R-squared:  0.7626")
+```
+
+#### 1.6.1.3. Model with interactions
+
+log(AUC) \~ dose_g_per_kg\*route + site
+
+It is logical that `AUC` will depend on the combination of dose and method of administration.
+
+```{r fit_lm_int}
+fit_AUC_mod_int <- lm(log(AUC) ~ dose_g_per_kg*route + site, order_0_df)
+# fit_AUC_mod_int2 <- lm(log(AUC) ~ dose_g_per_kg + route*site, order_0_df)
+# fit_AUC_mod_int3 <- lm(log(AUC) ~ dose_g_per_kg*site + route, order_0_df)
+# fit_AUC_mod_int4 <- lm(log(AUC) ~ dose_g_per_kg*site*route, order_0_df)
+
+
+summ(fit_AUC_mod_int, confint = TRUE, digits = 3)
+```
+
+```{r}
+anova(fit_AUC_mod_int, fit_AUC_submod)
+```
+
+
+```{r, fig.width=8, fig.height=10}
+check_model(fit_AUC_mod_int)
+```
+
+```{r}
+ggpredict(fit_AUC_mod_int, terms = c("dose_g_per_kg", "route", "site"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.799") + xlab("Dose (g per kg)")
+```
+
+```{r, fig.width=7, fig.height=5, dpi=300}
+plot_coefs(fit_AUC_mod_int, omit.coefs = NULL, scale = TRUE, ci_level = 0.95, plot.distributions = FALSE, inner_ci_level = .1, colors = "CUD") + labs(title = "Regression coeffecients with 95% CI")
+```
+
+```{r}
+plot_model(fit_AUC_mod_int, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3,  axis.labels = c("Dose (g per kg)", "Route (PO)", "Blood sampling (venous)", "Dose (g per kg) x Route (PO)", "Intercept"), title = "Regression coeffecients with 95% CI") +
+  theme_nice()
+```
+
+**Coclusions:**
+
+Including the interaction between `dose_g_per_kg` and `route` increases $R^2$ by about 3%.
+
+### 1.6.2. Regression models for Tmax
+
+```{r, tmax-full}
+order_0_df <- order_0_df %>% 
+  mutate(bmi = ifelse(is.na(bmi) & !is.na(wt_kg) & !is.na(bh_cm),
+                      wt_kg/(bh_cm/100)^2, bmi),
+         bsa_m2 = ifelse(is.na(bsa_m2) & !is.na(wt_kg) & !is.na(bh_cm),
+                         sqrt((bh_cm * wt_kg)/3600), bsa_m2))
+
+t_max_full_m <- lm(Tmax ~ dose_g_per_kg * food + route + wt_kg, data = order_0_df)
+
+summary(t_max_full_m)
+```
+
+```{r, fig.width=20, fig.height=15}
+check_model(t_max_full_m)
+```
+
+```{r, fig.width=20, fig.height=15}
+ggResidpanel::resid_xpanel(t_max_full_m)
+```
+
+```{r, fig.width=20, fig.height=15}
+ggResidpanel::resid_panel(t_max_full_m, plots = c("lev", "cookd"))
+```
+
+Estimating model coefficients using sandwich estimator
+
+```{r}
+t_max_coef <- coeftest(t_max_full_m, vcov. = vcovHC, type = "HC3") %>%
+broom::tidy(conf.int = TRUE) %>% 
+  mutate(term = c("Intercept",
+                  "Dose (g/kg)",
+                  "Food status: \"Fed\"",
+                  "Peroral route",
+                  "Weight, kg",
+                  "Interaction between\ndose and status \"fed\"")) %>% 
+  rename("Variable" = term,
+         "β estimate" = estimate,
+         "Standard error" = std.error,
+         "Wald t-test statistics" = statistic,
+         "P-value" = p.value,
+         "95%CI low" = conf.low,
+         "95%CI high" = conf.high)
+t_max_coef %>% 
+  mutate(across(where(is.numeric), ~round(.x, 3))) %>% 
+  flextable()
+```
+
+```{r, fig.height=12, fig.width=12}
+t_max_prediction_plot <- fortify(t_max_full_m)
+ggplot(t_max_prediction_plot, aes(x = .fitted, y = Tmax)) +
+  geom_point(size = 2) +
+  ylim(c(25,130)) +
+  xlim(c(25,130)) +
+  geom_abline(slope = 1, intercept = 0, color = "skyblue3",
+              linetype = "dashed", linewidth = 2) +
+  geom_text(x = 75, y = 130, label = "Adjusted R-squared = 0.497", size = 8) +
+  labs(title = "Predicted vs observed Tmax values",
+       x = "Fitted values of Tmax, min",
+       y = "Observed values of Tmax, min")
+```
+
+```{r, fig.height=16, fig.width=20}
+t_max_coef %>% 
+ggplot(aes(y = `Variable`)) +
+  geom_point(aes(x = `β estimate`), size = 3) +
+  geom_errorbar(aes(xmin = `95%CI low`, xmax = `95%CI high`), width = 0.5) +
+  geom_vline(xintercept = 0, color = "darkred") +
+  labs(title = "Coefficients and 95%CI in Tmax model")
+```
+
+### 1.6.3. Regression models for Cmax
+
+log(Cmax) \~ dose_g_per_kg + route + food + site
+
+```{r Cmax-lm2-v1, fig.height=16, fig.width=16}
+order_0_df_factor <- order_0_df %>% 
+  mutate(
+    route = factor(route),
+    food = factor(food),
+    site = factor(site)
+  )
+
+Cmax_lm2_v1 <- lm(log(Cmax) ~ dose_g_per_kg + route + food + site, data = order_0_df_factor)
+
+summary(Cmax_lm2_v1)
+check_model(Cmax_lm2_v1)
+
+broom::tidy(Cmax_lm2_v1, conf.int = TRUE)
+# analysis of model linearity using Residuals vs Fitted plot
+autoplot(Cmax_lm2_v1, 1, ncol = 1)
+# Linearity diagnosis with ggResidpanel library
+resid_panel(Cmax_lm2_v1, plots = "resid", smoother = TRUE)
+# Diagnosis of homoscedasticity of residuals using the Scale-Location plot
+autoplot(Cmax_lm2_v1, 3, ncol = 1)
+# Diagnosing the normality of residual distribution using a Normal Q-Q plot:
+resid_panel(Cmax_lm2_v1, plots = c("qq", "hist"))
+# Diagnosis of outliers and anomalous observations using the Residuals vs Leverage plot and Cook's distance plot
+resid_panel(Cmax_lm2_v1, plots = c("lev", "cookd"))
+```
+
+log(Cmax) \~ dose_g_per_kg + route + food + site + sex + age
+
+```{r Cmax lm2 v2, fig.height=8, fig.width=8}
+order_0_df_factor <- order_0_df %>% 
+  mutate(
+    route = factor(route),
+    food = factor(food),
+    site = factor(site),
+    sex = factor(sex)
+  )
+
+Cmax_lm2_v2 <- lm(log(Cmax) ~ dose_g_per_kg + route + food + sex + age, data = order_0_df_factor)
+
+summary(Cmax_lm2_v2)
+check_model(Cmax_lm2_v1)
+
+broom::tidy(Cmax_lm2_v2, conf.int = TRUE)
+# analysis of model linearity using Residuals vs Fitted plot
+autoplot(Cmax_lm2_v2, 1, ncol = 1)
+# Linearity diagnosis with ggResidpanel library
+resid_panel(Cmax_lm2_v2, plots = "resid", smoother = TRUE)
+# Diagnosis of homoscedasticity of residuals using the Scale-Location plot
+autoplot(Cmax_lm2_v2, 3, ncol = 1)
+# Diagnosing the normality of residual distribution using a Normal Q-Q plot:
+resid_panel(Cmax_lm2_v2, plots = c("qq", "hist"))
+# Diagnosis of outliers and anomalous observations using the Residuals vs Leverage plot and Cook's distance plot
+resid_panel(Cmax_lm2_v2, plots = c("lev", "cookd"))
+```
+
+
+
+```{r, fig.height=10, fig.width=10}
+t_max_coef <- coeftest(Cmax_lm2_v2, vcov. = vcovHC, type = "HC3") %>%
+broom::tidy(conf.int = TRUE) %>% 
+  mutate(term = c("Intercept",
+                  "Dose (g/kg)",
+                  "Peroral route",
+                  "Food status: \"Fed\"",
+                  "sex M",
+                  "age")) %>% 
+  rename("Variable" = term,
+         "β estimate" = estimate,
+         "Standard error" = std.error,
+         "Wald t-test statistics" = statistic,
+         "P-value" = p.value,
+         "95%CI low" = conf.low,
+         "95%CI high" = conf.high)
+t_max_coef %>% 
+  mutate(across(where(is.numeric), ~round(.x, 3))) %>% 
+  flextable()
+```
+
+
+```{r, fig.height=16, fig.width=20}
+ggpredict(Cmax_lm2_v2, terms = c("age", "route"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.8459")
+```
+
+
+```{r, fig.height=16, fig.width=20}
+plot_model(Cmax_lm2_v2, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3, digits = 3,title = "Regression coeffecients with 95% CI") +
+  geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
+  theme_nice()
+```
+
+
+log(Cmax) \~ age + lbm_kg
+
+```{r Cmax-lm2-v3, fig.height=16, fig.width=20}
+
+Cmax_lm2_v3 <- lm(Cmax ~ age + lbm_kg, data = order_0_df_factor)
+
+summary(Cmax_lm2_v3)
+#check_model(Cmax_lm2_v1)
+
+broom::tidy(Cmax_lm2_v3, conf.int = TRUE)
+# analysis of model linearity using Residuals vs Fitted plot
+autoplot(Cmax_lm2_v3, 1, ncol = 1)
+# Linearity diagnosis with ggResidpanel library
+resid_panel(Cmax_lm2_v3, plots = "resid", smoother = TRUE)
+# Diagnosis of homoscedasticity of residuals using the Scale-Location plot
+autoplot(Cmax_lm2_v3, 3, ncol = 1)
+# Diagnosing the normality of residual distribution using a Normal Q-Q plot:
+resid_panel(Cmax_lm2_v3, plots = c("qq", "hist"))
+# Diagnosis of outliers and anomalous observations using the Residuals vs Leverage plot and Cook's distance plot
+resid_panel(Cmax_lm2_v3, plots = c("lev", "cookd"))
+```
+
+### 1.6.4. Regression models for C_0
+
+```{r С_0_0_order-lm1-v1}
+order_0_df
+C_0_0_lm1_v1 <- lm(log(C_0_0_order) ~ dose_g_per_kg + route + food + site + study_id, data = order_0_df)
+summary(C_0_0_lm1_v1)
+check_model(C_0_0_lm1_v1)
+
+```
+Adjusted R-squared:  0.8286 
+
+1) Posterior Predictive Check
+
+The density lines of the models and observations almost coincide. This means that the model adequately reproduces the distribution of C_0_0.
+
+2) Linearity
+
+The green smoothed line is close to horizontal, but there is a slight systematic trend visible at the right end (with large fitted values).
+There is no significant violation of linearity. It is possible that there is insufficient interaction or nonlinear effect of one of the predictors.
+
+3) Homogeneity of variance
+There is no heteroscedasticity.
+
+4) Influential observations
+
+Several influential observations are visible, marked with numbers (78, 92, 62, 95, 67)
+
+5) Normality of residuals
+
+The Q–Q chart looks acceptable.
+
+6) Collinearty VIF
+dose_g_per_kg, route, study_id - High ≥ 10
+
+I will try to remove unnecessary indicators, for example, in each study, 1 level of food.
+
+```{r С_0_0_order-lm1-var1.1}
+C_0_0_lm1_v2 <- lm(log(C_0_0_order) ~ study_id, data = order_0_df)
+summary(C_0_0_lm1_v2)
+check_model(C_0_0_lm1_v2)
+
+```
+Adjusted R-squared:  0.8277
+Removed collinearity.
+
+```{r С_0_0_order-lm2-v1-v2-part1}
+order_0_df
+C_0_0_lm2_v1 <- lm(log(C_0_0_order) ~ study_id + sex+age , data = order_0_df)
+summary(C_0_0_lm2_v1) #sex and age depend on study_id, there is no point in looking at all the data
+
+
+df_sa <- order_0_df %>% filter(!is.na(sex), !is.na(age), !is.na(C_0_0_order)) 
+# Wilkinson and Thierauf data, 18 observations
+
+df_sa <- df_sa %>%  mutate(bmi = wt_kg / (bh_cm/100)^2, 
+         bsa_m2 = sqrt(bh_cm * wt_kg / 3600)) # bsa fits better in the model
+
+C_0_0_lm2_v2 <- lm(log(C_0_0_order) ~ log(dose_g_per_kg) + bsa_m2 + sex, data = df_sa) 
+summary(C_0_0_lm2_v2)
+check_model(C_0_0_lm2_v2)
+```
+
+It looks better visually, but there are a lot of predictors. I calculated BMI and BSA and tried to include them in the model in various ways.
+
+```{r С_0_0_order-lm3-v1}
+C_0_0_lm3_v1 <- lm(log(C_0_0_order) ~ bsa_m2 , data = order_0_df)
+
+summary(C_0_0_lm3_v1)
+check_model(C_0_0_lm3_v1)
+```
+
+### 1.6.5. Regression models for Vd
+
+```{r basic_lms}
+fit_Vd_1 <- lm(V_d_0_order ~ route + food + site, data = order_0_df_factor)
+
+summary(fit_Vd_1)
+
+cat("\n===============================================================\n")
+
+fit_Vd_3 <- lm(V_d_0_order ~ route, data = order_0_df_factor)
+
+summary(fit_Vd_3)
+
+cat("\n===============================================================\n")
+
+fit_Vd_4 <- lm(V_d_0_order ~ route + site, data = order_0_df_factor)
+
+summary(fit_Vd_4)
+
+cat("\n===============================================================\n")
+
+fit_Vd_5 <- lm(V_d_0_order ~ route + food, data = order_0_df_factor)
+
+summary(fit_Vd_5)
+
+cat("\n===============================================================\n")
+
+anova(fit_Vd_1, fit_Vd_3)
+
+anova(fit_Vd_1, fit_Vd_4)
+
+anova(fit_Vd_1, fit_Vd_5)
+```
+
+```{r}
+fit_Vd_3_sub <- lm(V_d_0_order ~ 1,  data = order_0_df_factor)
+
+anova(fit_Vd_3, fit_Vd_3_sub)
+```
+
+```{r model_check, fig.width = 16, fig.height = 8}
+check_model(fit_Vd_3)
+```
+
+```{r}
+fit_Vd_3_add <- lm(V_d_0_order ~ route + wt_kg * sex, data = order_0_df_factor)
+fit_Vd_3_add2 <- lm(V_d_0_order ~ route + wt_kg + sex, data = order_0_df_factor)
+
+anova(fit_Vd_3_add, fit_Vd_3_add2)
+
+summary(fit_Vd_3_add2)
+
+fit_Vd <- lm(V_d_0_order ~ wt_kg + sex, data = order_0_df_factor)
+
+anova(fit_Vd, fit_Vd_3_add2)
+
+summary(fit_Vd)
+
+```
+
+```{r, fig.width = 16, fig.height = 8}
+check_model(fit_Vd)
+```
+
+```{r}
+resid_panel(fit_Vd, plots = c("lev", "cookd"))
+```
+
+```{r}
+ggpredict(fit_Vd, terms = c("wt_kg", "sex"), ci_level = 0.95) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) +
+  labs(title = "Predicted values of Vd",
+    subtitle = "Adjusted R-squared:  0.2259",
+    color = "Sex") +
+  xlab("Weight (kg)") +
+  ylab("Vd (L / kg)")
+```
+
+```{r}
+plot_model(fit_Vd, digits = 3, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3,  axis.labels = c("Weight (kg)", "Sex", "Intercept"), title = "Regression coeffecients with 95% CI") +
+  theme_nice()
+```
+
+### 1.6.6. Regression models for Beta
+
+```{r}
+fit_Beta_1 <- lm(Beta ~ dose_g_per_kg * route, data = order_0_df_factor)
+
+summary(fit_Beta_1)
+```
+
+```{r}
+fit_Beta_1_sub <- lm(Beta ~ 1,  data = order_0_df_factor)
+
+anova(fit_Beta_1, fit_Beta_1_sub)
+```
+
+```{r, fig.width = 16, fig.height = 8}
+check_model(fit_Beta_1)
+```
+
+```{r, fig.width = 16, fig.height = 8}
+resid_panel(fit_Beta_1, plots = c("lev", "cookd"))
+```
+
+```{r}
+ggpredict(fit_Beta_1, terms = c("dose_g_per_kg", "route"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.5671") + xlab("Dose (g per kg)")
+```
+
+```{r}
+plot_model(fit_Beta_1, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3,  axis.labels = c("Dose (g per kg)", "Route (PO)", "Dose (g per kg) x Route (PO)", "Intercept"), title = "Regression coeffecients with 95% CI") +
+  theme_nice()
+```
+
+## 1.7. Interpretation of models. Effect of factors on PK-parameters
+
+### 1.7.1. The effect of body mass and body surface area on PK-parameters
+
+**Body mass**
+
+```{r}
+ggpredict(fit_Vd, terms = c("wt_kg", "sex"), ci_level = 0.95) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) +
+  labs(title = "Predicted values of Vd",
+    subtitle = "Adjusted R-squared:  0.2259",
+    color = "Sex") +
+  xlab("Weight (kg)") +
+  ylab("Vd (L / kg)")
+```
+
+```{r}
+fit_Vd %>% broom::tidy(conf.int = TRUE) %>% filter(term == "wt_kg") %>% 
+  mutate(across(c(where(is.numeric), -p.value), ~round(.x, 3))) %>% 
+  mutate(p.value = gtsummary::style_pvalue(p.value),
+         term = "Body mass, kg") %>% 
+  select(-statistic) %>% 
+  slice_tail(n = 1) %>% 
+  rename(
+    `Indicator` = term,
+    `Coefficient (β)` = estimate,
+    `Standard error` = std.error,
+    `P-value` = p.value,
+    `Lower bound of 95% CI` = conf.low,
+    `Upper bound of 95% CI` = conf.high
+  ) %>% 
+  flextable() %>%
+  add_header_row(., values = "Estimation of the body mass coefficient in the Vd model", colwidth = 6) %>% 
+  flex_default_fun()
+```
+
+**Body surface area**
+
+```{r}
+ggpredict(lm(V_d_0_order ~ bsa_m2 + sex, data = order_0_df),
+          terms = c("bsa_m2", "sex"), ci_level = 0.95) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) +
+  labs(title = "Predicted values of Vd",
+    subtitle = "Adjusted R-squared:  0.2433",
+    color = "Sex") +
+  xlab("Body Surface Area (m²)") +
+  ylab("Vd (L / kg)")
+```
+
+```{r}
+lm(V_d_0_order ~ bsa_m2 + sex, data = order_0_df) %>% 
+  broom::tidy(conf.int = TRUE) %>% filter(term == "bsa_m2") %>% 
+  mutate(across(c(where(is.numeric), -p.value), ~round(.x, 3))) %>% 
+  mutate(p.value = gtsummary::style_pvalue(p.value),
+         term = "Body surface area, m²") %>% 
+  select(-statistic) %>% 
+  slice_tail(n = 1) %>% 
+  rename(
+    `Indicator` = term,
+    `Coefficient (β)` = estimate,
+    `Standard error` = std.error,
+    `P-value` = p.value,
+    `Lower bound of 95% CI` = conf.low,
+    `Upper bound of 95% CI` = conf.high
+  ) %>% 
+  flextable() %>%
+  add_header_row(., values = "Estimation of the body surface area coefficient in the Vd model", colwidth = 6) %>% 
+  flex_default_fun()
+```
+
+**Lean body mass**
+
+```{r}
+ggpredict(Cmax_lm2_v3,
+          terms = c("lbm_kg", "age"), ci_level = 0.95) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) +
+  labs(title = "Predicted values of Cmax",
+    subtitle = "Adjusted R-squared:  0.3328",
+    color = "Age") +
+  xlab("Lean Body Mass (kg)") +
+  ylab("Cmax (g/L)")
+```
+
+```{r}
+Cmax_lm2_v3 %>% 
+  broom::tidy(conf.int = TRUE) %>% filter(term == "lbm_kg") %>% 
+  mutate(across(c(where(is.numeric), -p.value), ~round(.x, 4))) %>% 
+  mutate(p.value = gtsummary::style_pvalue(p.value),
+         term = "Lean body mass, kg") %>% 
+  select(-statistic) %>% 
+  slice_tail(n = 1) %>% 
+  rename(
+    `Indicator` = term,
+    `Coefficient (β)` = estimate,
+    `Standard error` = std.error,
+    `P-value` = p.value,
+    `Lower bound of 95% CI` = conf.low,
+    `Upper bound of 95% CI` = conf.high
+  ) %>% 
+  flextable() %>%
+  add_header_row(., values = "Estimation of the lean body mass coefficient in the Cmax model", colwidth = 6) %>% 
+  flex_default_fun()
+```
+
+With an increase in body weight by 1 kg, Vd decreases by 0.004 (95% CI [0.001; 0.007]) L/kg (all other things being equal), and with an increase in body surface area by 1 $m^2$, Vd decreases by 0.311 (95% CI [0.032; 0.589]) L/kg (all other things being equal).
+
+When lean body mass increases by 1 kg, Cmax decreases by 0.0086 (95% CI [0.0002; 0.017]) g/L, all other things being equal.
+
+### 1.7.2. The effect of sex on PK-parameters
+
+Sex does not significantly affect AUC (Male 95%CI[-0.3108; 0.1754]) or Cmax (Male 95%CI[-0.1505; 0.326]).
+
+In male subjects, the volume of distribution is 0.106 L/kg higher than in females, all other things being equal (95% CI [-0.0155; 0.1964]).
+
+```{r}
+fit_Vd %>% 
+  broom::tidy(conf.int = TRUE) %>% filter(term == "sexM") %>% 
+  mutate(across(c(where(is.numeric), -p.value), ~round(.x, 4))) %>% 
+  mutate(p.value = gtsummary::style_pvalue(p.value),
+         term = "Sex") %>% 
+  select(-statistic) %>% 
+  slice_tail(n = 1) %>% 
+  rename(
+    `Indicator` = term,
+    `Coefficient (β)` = estimate,
+    `Standard error` = std.error,
+    `P-value` = p.value,
+    `Lower bound of 95% CI` = conf.low,
+    `Upper bound of 95% CI` = conf.high
+  ) %>% 
+  flextable() %>%
+  add_header_row(., values = " Estimation of the sex coefficient in the Vd model", colwidth = 6) %>% 
+  flex_default_fun()
+```
+
+### 1.7.3. The effect of food on PK-parameters
+
+It's necessary to replace the site to food from the previous model of AUC (fit_AUC_mod_int), because you can't add them together.
+
+```{r}
+fit_AUC_mod_with_food <- lm(log(AUC) ~ dose_g_per_kg*route + food, order_0_df)
+
+summary(fit_AUC_mod_with_food, confint = TRUE, digits = 3)
+```
+
+```{r, fig.width=6, fig.height=4}
+plot_auc <- plot_model(fit_AUC_mod_with_food, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3, axis.labels = c("Dose (g per kg) x Route (PO)", "Food status (fed)", "Route (PO)", "Dose (g per kg)","Intercept")) +
+  geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
+  labs(title = "Regression coefficients for AUC with 95% CI", 
+       subtitle = "log(AUC) ~ dose_g_per_kg*route + food") +
+  theme_nice()+
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+
+plot_auc
+
+d <- plot_auc$data
+
+d$ci_label <- sprintf(
+  "[%.2f; %.2f]",
+  d$conf.low,
+  d$conf.high
+)
+```
+
+Compared with the fasted state, “fed” condition was associated with log(AUC) decreased by 0.36, AUC decreased by 30.2% (all other things being equal).Percent derived as (exp(β)−1)×100.
+
+```{r, fig.height=4, fig.width=6}
+plot_cmax <- plot_model(Cmax_lm2_v2, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3, digits = 3) +
+  geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
+  labs(title = "Regression coefficients for Cmax with 95% CI", 
+       subtitle = "log(Cmax) ~ dose_g_per_kg + route + food + sex + age") +
+  theme_nice()+
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+
+plot_cmax
+```
+
+Compared with the fasted state, “fed” condition was associated with log(Cmax) decreased by 0.286, Cmax decreased by 24.9% (all other things being equal).
+
+```{r, fig.width = 4, fig.height = 4}
+plot_beta <- plot_model(fit_Beta_1, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.5, digits = 3,   axis.labels = c("Dose (g per kg) x Route (PO)", "food (fed)","Route (PO)", "Dose (g per kg)", "Intercept")) +
+    geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
+labs(title = "Regression coefficients \n for Beta with 95% CI", 
+       subtitle = "Beta ~ dose_g_per_kg * route + food") +
+  scale_y_continuous(limits = c(-0.015, 0.015)) +
+  theme_nice()+
+  theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+
+plot_beta
+
+d <- plot_beta$data
+
+d$ci_label <- sprintf(
+  "[%.4f; %.4f]",
+  d$conf.low,
+  d$conf.high)
+```
+
+Compared with the fasted state, “fed” condition was associated with Beta increased by 0.0004 g/L/min (all other things being equal). 
+
+# 2. Allometric scaling using rats' PK parameters
+
+## 2.1. Data unification
+
+```{r rat_Kozawa_prep}
+Kozawa_2007 <- Kozawa_2007 %>% 
+  mutate(time_min = round(time_h * 60, 0)) %>% 
+  mutate(route = route %>% str_remove_all(" bolus")) %>%
+  select(-time_h) %>% 
+  mutate(number = dose_g_per_kg/0.5)
+```
+
+
+```{r rat_Eriksson_prep}
+Eriksson_1977 <- Eriksson_1977 %>% 
+  mutate(time_min = round(time_h * 60, 0)) %>% 
+  select(-time_h) %>% 
+  mutate(number = case_when(
+      dose_g_per_kg == 0.75 ~ 1,
+      dose_g_per_kg == 1.50 ~ 2,
+      dose_g_per_kg == 3.00 ~ 3,
+    ))
+```
+
+
+
+## 2.2. Concentration-time plots
+
+```{r, fig.height=12, fig.width=15, dpi=300}
+ggplot(Kozawa_2007, aes(x = time_min, y = conc_g_per_L)) +
+  geom_line(aes(group = number)) +
+  scale_y_continuous(breaks = seq(0, 3.6, 0.2)) +
+  scale_x_continuous(breaks = seq(0, 500, 25)) +
+  labs(title = "Concentration-time plot (rats, IV route)",
+       subtitle = "Averaged data",
+       caption = "Source: Kozawa-2007",
+       x = "Time, min",
+       y = "Concentration, g/L")
+```
+
+
+```{r, fig.height=12, fig.width=15, dpi=300}
+ggplot(Eriksson_1977, aes(x = time_min, y = conc_g_per_L)) +
+  geom_line(aes(group = number)) +
+  scale_y_continuous(breaks = seq(0, 1.8, 0.1)) +
+  scale_x_continuous(breaks = seq(0, 300, 30)) +
+  labs(title = "Concentration-time plot (rats, PO route)",
+       subtitle = "Averaged data",
+       caption = "Source: Eriksson-1977",
+       x = "Time, min",
+       y = "Concentration, g/L")
+```
+
+## 2.3. PK-parameteres calculation
+
+```{r rat_Kozawa_pk}
+Kozawa_2007_pk <- Kozawa_2007 %>% 
+  arrange(time_min) %>% 
+  nest(.by = number, .key = "average_data") %>% 
+  mutate(pharma = purrr::map(average_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-average_data)
+
+Kozawa_2007_pk <- Kozawa_2007 %>% 
+  select(-c(time_min, conc_g_per_L)) %>% 
+  group_by(number) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  right_join(Kozawa_2007_pk) %>% 
+  select(-number)
+```
+
+
+```{r rat_Eriksson_pk}
+Eriksson_1977_pk <- Eriksson_1977 %>% 
+  arrange(time_min) %>% 
+  nest(.by = number, .key = "average_data") %>% 
+  mutate(pharma = purrr::map(average_data,
+                            ~pharma_fun(.$conc_g_per_L,
+                                        .$time_min,
+                                        .$dose_g_per_kg))) %>% 
+  unnest_wider(col = pharma) %>% 
+  select(-average_data)
+
+# for two concentrations there are not enough points to calculate beta
+
+Eriksson_1977_pk <- Eriksson_1977 %>% 
+  select(-c(time_min, conc_g_per_L)) %>% 
+  group_by(number) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  right_join(Eriksson_1977_pk) %>% 
+  select(-number)
+```
+
+```{r rat-join}
+rat_data_pk <- rbind(Kozawa_2007_pk, Eriksson_1977_pk)
+```
+
+## 2.4. Preaparing data and function
+
+```{r rat_data} 
+# Dataset prepararion
+rat_data_pk <-  rat_data_pk %>% 
+  mutate(V_max_0_order = Beta * 60 * V_d_0_order,
+         BW_g = BW_g / 1000) %>%
+  rename(wt_kg = BW_g) %>% 
+  relocate(V_max_0_order, .after = V_d_0_order)
+```
+
+```{r allometric_func}
+allom_scale <- function(V_rat, # L, abs
+                        rat_weight, # kg
+                        human_weight = 1, # kg
+                        n = 1)
+{
+  V_human = V_rat * (human_weight / rat_weight) ^ n
+  return(V_human)
+}
+```
+
+```{r allometric}
+# Human dataset preparation
+allometric <- order_0_df %>% 
+  filter(!is.na(wt_kg)) %>% 
+  select(study_id, subject_id, dose_g_per_kg, route, 
+         Beta, V_d_0_order, wt_kg) %>% 
+  mutate(V_max = Beta * V_d_0_order * 60) %>% 
+  mutate(Vd_obs = V_d_0_order * wt_kg,
+         Vmax_obs = Beta * V_d_0_order * wt_kg * 60,
+         Beta_obs = Beta * 60) %>% 
+  relocate(c(Vd_obs, Vmax_obs, Beta_obs), .after = V_max)
+
+# Only Wilkinson IV (Human dose 0,5-0,62 mg/kg)
+# allometric_IV_Wilk <- allometric %>% 
+#   filter(route == "IV",
+#          study_id == "Wilkinson-1976-IV") %>% 
+#   crossing(rat_data_pk %>% filter(dose_g_per_kg == 0.5) %>% 
+#              mutate(Vd_abs_rat = (V_d_0_order * wt_kg)) %>% 
+#              rename_with(~ paste0("rat_", .x))) %>% 
+#   mutate(Vd_classic = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg),
+#          Vd_matsumoto = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg, 0.932),
+#          Beta_classic = allom_scale(rat_Beta, rat_wt_kg, wt_kg, 0.75),
+#          Beta_matsumoto = allom_scale(rat_Beta, rat_wt_kg, wt_kg, 0.708),
+#          Vmax_classic = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.75),
+#          Vmax_matsumoto = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.708))
+```
+
+## 2.5. Allometric scaling
+
+## 2.5.1. IV allometric scaling (main df)
+
+```{r allometric_IV}
+# Allometric data for IV route
+allometric_IV <- allometric %>% 
+  filter(route == "IV") %>% 
+  crossing(rat_data_pk %>% filter(dose_g_per_kg == 0.5) %>% 
+             mutate(Vd_abs_rat = (V_d_0_order * wt_kg)) %>% 
+             rename_with(~ paste0("rat_", .x))) %>% 
+  mutate(Vd_classic = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg),
+         Vd_matsumoto = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg, 0.932),
+         Beta_classic = allom_scale(rat_Beta * 60, rat_wt_kg, wt_kg, 0.75 - 1),
+         Beta_matsumoto = allom_scale(rat_Beta * 60, rat_wt_kg, wt_kg, 0.708 - 0.932),
+         Vmax_classic = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.75),
+         Vmax_matsumoto = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.708)) %>% 
+  mutate(Vd_metr_cl = (Vd_classic - Vd_obs) / Vd_obs * 100,
+         Vd_metr_mats = (Vd_matsumoto - Vd_obs) / Vd_obs * 100,
+         Beta_metr_cl = (Beta_classic - Beta_obs) / Beta_obs * 100,
+         Beta_metr_mats = (Beta_matsumoto - Beta_obs) / Beta_obs * 100,
+         Vmax_metr_cl = (Vmax_classic - Vmax_obs) / Vmax_obs * 100,
+         Vmax_metr_mats = (Vmax_matsumoto - Vmax_obs) / Vmax_obs * 100
+  ) %>% 
+  mutate(across(contains("metr"), ~round(.x, 3)))
+```
+
+```{r main_dose_IV}
+# Observed and mean dose
+main_df_IV <- order_0_df %>% 
+  filter(route == "IV" & !is.na(wt_kg)) %>% 
+  mutate(Vd_obs = V_d_0_order * wt_kg,
+         Vmax_obs = Beta * V_d_0_order * wt_kg * 60,
+         Beta_obs = Beta * 60)
+
+cat("Human mean dose, IV route, g/kg:", mean(main_df_IV$dose_g_per_kg))
+```
+
+```{r Vd_prop_IV, fig.width=5, fig.height=3, dpi=300}
+allometric_IV %>% 
+  select(contains("Vd_metr")) %>% 
+  rename(`Allometric classic` = Vd_metr_cl,
+         `Matsumoto` = Vd_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Vd allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Rat dose = 0.5 g/kg"
+  ) +
+  theme_bw()
+```
+
+```{r Vd_visual_IV}
+# Vd
+Vd_vis_IV <- bind_rows(
+  main_df_IV %>% transmute(value = Vd_obs, model = "Observed"),
+  allometric_IV %>% transmute(value = Vd_classic, model = "Allometric classic"),
+  allometric_IV %>% transmute(value = Vd_matsumoto, model = "Matsumoto")
+)
+
+ggplot(Vd_vis_IV, aes(x = model, y = value)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  theme_bw()+
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Vd, L", 
+    title = "Vd, allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Mean human dose = 0.57 g/kg, rat dose = 0.5 g/kg"
+  )
+```
+
+The usage of classical exponent (=1) for Vd allometric scaling shows mean error (%) from +20 to +50%. Matsumoto's exponent (=0,932) shows mean error (%) from 0% to -15%.
+
+```{r Beta_prop_IV, fig.width=6, fig.height=4, dpi=300}
+allometric_IV %>% 
+  select(contains("Beta_metr")) %>% 
+  rename(`Allometric classic` = Beta_metr_cl,
+         `Matsumoto` = Beta_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Beta allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Rat dose = 0.5 g/kg"
+  ) +
+  theme_bw()
+```
+
+```{r Beta_visual_IV}
+# Beta
+Beta_vis_IV <- bind_rows(
+  main_df_IV %>% transmute(value = Beta_obs, model = "Observed"),
+  allometric_IV %>% transmute(value = Beta_classic, model = "Allometric classic"),
+  allometric_IV %>% transmute(value = Beta_matsumoto, model = "Matsumoto")
+)
+
+ggplot(Beta_vis_IV, aes(x = model, y = value)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  theme_bw()+
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Beta, g/L/hour", 
+    title = "Beta, allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Mean human dose = 0.57 g/kg, rat dose = 0.5 g/kg"
+  )
+
+```
+
+The usage of classical exponent (= 0,75 - 1) for Beta allometric scaling shows mean error (%) from -35% to -50%. Matsumoto's exponent (= 0,708 - 0,932) shows mean error (%) from -25% to -43%.
+
+```{r Vmax_prop_IV, fig.width=6, fig.height=4, dpi=300}
+allometric_IV %>% 
+  select(contains("Vmax_metr")) %>% 
+  rename(`Allometric classic` = Vmax_metr_cl,
+         `Matsumoto` = Vmax_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Vmax allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Rat dose = 0.5 g/kg"
+  ) +
+  theme_bw()
+```
+
+```{r Vmax_visual_IV}
+# Vmax
+Vmax_vis_IV <- bind_rows(
+  main_df_IV %>% transmute(value = Vmax_obs, model = "Observed"),
+  allometric_IV %>% transmute(value = Vmax_classic, model = "Allometric classic"),
+  allometric_IV %>% transmute(value = Vmax_matsumoto, model = "Matsumoto")
+)
+
+ggplot(Vmax_vis_IV, aes(x = model, y = value)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  theme_bw()+
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Vmax, g/hour", 
+    title = "Vmax, allometric scaling using different allometric\nscale exponents, IV route of administration",
+    subtitle = "Mean human dose = 0.57 g/kg, rat dose = 0.5 g/kg"
+  )
+```
+
+The usage of classical exponent (= 0,75) for Vmax allometric scaling shows mean error (%) from +87 to +150%. Matsumoto's exponent (= 0,708) shows mean error (%) from +50% to +100%.
+
+### 2.5.2. PO allometric scaling
+
+#### 2.5.2.1. PO allometric scaling (750 mg per kg)
+
+```{r allometric_PO_750_mg}
+# Allometric scaling
+allometric_PO <- allometric %>% 
+  filter(route == "PO") %>% 
+  crossing(rat_data_pk %>% filter(dose_g_per_kg == 0.75) %>% 
+             mutate(Vd_abs_rat = (V_d_0_order * wt_kg)) %>% 
+             rename_with(~ paste0("rat_", .x))) %>% 
+  mutate(Vd_classic = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg),
+         Vd_matsumoto = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg, 0.932)) %>% 
+  mutate(Vd_metr_cl = (Vd_classic - Vd_obs) / Vd_obs * 100,
+         Vd_metr_mats = (Vd_matsumoto - Vd_obs) / Vd_obs * 100,
+  ) %>% 
+  mutate(across(contains("metr"), ~round(.x, 3)))
+  
+```
+
+```{r main_dose_PO}
+# Human dataset preparation
+main_df_PO <- order_0_df %>% 
+  filter(route == "PO" & !is.na(wt_kg)) %>% 
+  mutate(Vd_obs = V_d_0_order * wt_kg,
+         Vmax_obs = Beta * V_d_0_order * wt_kg * 60,
+         Beta_obs = Beta * 60)
+
+cat("Human mean dose, PO route, g/kg):", mean(main_df_PO$dose_g_per_kg))
+```
+
+```{r Vd_prop_PO_750, fig.width=6, fig.height=4, dpi=300}
+allometric_PO %>% 
+  select(contains("Vd_metr")) %>% 
+  rename(`Allometric classic` = Vd_metr_cl,
+         `Matsumoto` = Vd_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Vd allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Rat dose = 0.75 g/kg"
+  ) +
+  theme_bw()
+```
+
+Mean error (%) for Vd allometric scaling is more than +100% up to +300% using classic allometric exponent.
+We cannot use another PK parameters due to no captured elimination phase in the rat data for this dose.
+
+```{r Vd_visual_PO_750_mg}
+# Vd
+Vd_vis_PO <- bind_rows(
+  main_df_PO %>% transmute(value = Vd_obs, model = "Observed"),
+  allometric_PO %>% transmute(value = Vd_classic, model = "Allometric classic"),
+  allometric_PO %>% transmute(value = Vd_matsumoto, model = "Matsumoto")
+)
+
+ggplot(Vd_vis_PO, aes(x = model, y = value)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  theme_bw()+
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Vd, L", 
+    title = "Vd, allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Mean human dose = 0.58 g/kg, rat dose = 0.75 g/kg"
+  )
+```
+
+#### 2.5.2.2. PO allometric scaling (3000 mg per kg)
+
+```{r allometric_PO_3_g}
+# Scaling
+allometric_PO_3 <- allometric %>% 
+  filter(route == "PO") %>% 
+  crossing(rat_data_pk %>% filter(dose_g_per_kg == 3) %>% 
+             mutate(Vd_abs_rat = (V_d_0_order * wt_kg)) %>% 
+             rename_with(~ paste0("rat_", .x))) %>%
+  mutate(Vd_classic = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg),
+         Vd_matsumoto = allom_scale(rat_Vd_abs_rat, rat_wt_kg, wt_kg, 0.932),
+         Beta_classic = allom_scale(rat_Beta * 60, rat_wt_kg, wt_kg, 0.75 - 1),
+         Beta_matsumoto = allom_scale(rat_Beta * 60, rat_wt_kg, wt_kg, 0.708 - 0.932),
+         Vmax_classic = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.75),
+         Vmax_matsumoto = allom_scale(rat_V_max_0_order, rat_wt_kg, wt_kg, 0.708)) %>% 
+  mutate(Vd_metr_cl = (Vd_classic - Vd_obs) / Vd_obs * 100,
+         Vd_metr_mats = (Vd_matsumoto - Vd_obs) / Vd_obs * 100,
+         Beta_metr_cl = (Beta_classic - Beta_obs) / Beta_obs * 100,
+         Beta_metr_mats = (Beta_matsumoto - Beta_obs) / Beta_obs * 100,
+         Vmax_metr_cl = (Vmax_classic - Vmax_obs) / Vmax_obs * 100,
+         Vmax_metr_mats = (Vmax_matsumoto - Vmax_obs) / Vmax_obs * 100
+  ) %>% 
+  mutate(across(contains("metr"), ~round(.x, 3)))
+  
+```
+
+```{r Vd_prop_PO_3000, fig.width=6, fig.height=4, dpi=300}
+allometric_PO_3 %>% 
+  select(contains("Vd_metr")) %>% 
+  rename(`Allometric classic` = Vd_metr_cl,
+         `Matsumoto` = Vd_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Vd allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Rat dose = 3.00 g/kg"
+  ) +
+  theme_bw()
+```
+
+```{r Vd_visual_PO_3_g}
+# Vd
+Vd_vis_PO_3 <- bind_rows(
+  main_df_PO %>% transmute(value = Vd_obs, model = "Observed"),
+  allometric_PO_3 %>% transmute(value = Vd_classic, model = "Allometric classic"),
+  allometric_PO_3 %>% transmute(value = Vd_matsumoto, model = "Matsumoto")
+)
+
+ggplot(Vd_vis_PO_3, aes(x = model, y = value)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  theme_bw()+
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Vd, L", 
+    title = "Vd, allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Mean human dose = 0.58 g/kg, rat dose = 3.00 g/kg"
+  )
+```
+
+```{r Beta_prop_PO_3000, fig.width=6, fig.height=4, dpi=300}
+allometric_PO_3 %>% 
+  select(contains("Beta_metr")) %>% 
+  rename(`Allometric classic` = Beta_metr_cl,
+         `Matsumoto` = Beta_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Beta allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Rat dose = 3.00 g/kg"
+  ) +
+  theme_bw()
+```
+
+```{r Beta_visual_PO_3_g}
+# Beta
+Beta_vis_PO_3 <- bind_rows(
+  main_df_PO %>% transmute(value = Beta_obs, model = "Observed"),
+  allometric_PO_3 %>% transmute(value = Beta_classic, model = "Allometric classic"),
+  allometric_PO_3 %>% transmute(value = Beta_matsumoto, model = "Matsumoto")
+)
+
+ggplot(Beta_vis_PO_3, aes(x = model, y = value)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  theme_bw()+
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Beta, g/L/hour", 
+    title = "Beta, allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Mean human dose = 0.58 g/kg, rat dose = 3.00 g/kg"
+  )
+```
+
+```{r Vmax_prop_PO_3000, fig.width=6, fig.height=4, dpi=300}
+allometric_PO_3 %>% 
+  select(contains("Vmax_metr")) %>% 
+  rename(`Allometric classic` = Vmax_metr_cl,
+         `Matsumoto` = Vmax_metr_mats) %>% 
+  pivot_longer(everything(), names_to = "Type", values_to = "Percentage") %>% 
+  filter(!is.na(Percentage)) %>% 
+ggplot(aes(x = Type, y = Percentage)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Error, %", 
+    title = "Error of Vmax allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Rat dose = 3.00 g/kg"
+  ) +
+  theme_bw()
+```
+
+```{r Vmax_visual_PO_3_g}
+# Vmax
+Vmax_vis_PO_3 <- bind_rows(
+  main_df_PO %>% transmute(value = Vmax_obs, model = "Observed"),
+  allometric_PO_3 %>% transmute(value = Vmax_classic, model = "Allometric classic"),
+  allometric_PO_3 %>% transmute(value = Vmax_matsumoto, model = "Matsumoto")
+)
+
+ggplot(Vmax_vis_PO_3, aes(x = model, y = value)) +
+  geom_boxplot(width = 0.1, staplewidth = 0.5) +
+  theme_bw()+
+  labs(
+    x = "Used allometric scale exponent",
+    y = "Vmax, g/hour", 
+    title = "Vmax, allometric scaling using different allometric\nscale exponents, PO route of administration",
+    subtitle = "Mean human dose = 0.58 g/kg, rat dose = 3.00 g/kg"
+  )
+```
+
+Predictive mean performance (error, %) for PO route with rat dose 3.0 g/kg: 
+
+- Vd: Allometric classic +187.82, Matsumoto +98.65;
+
+
+- Beta: Allometric classic -72.20, Matsumoto -67.97;
+
+
+- Vmax: Allometric classic +144.25, Matsumoto +94.28.
