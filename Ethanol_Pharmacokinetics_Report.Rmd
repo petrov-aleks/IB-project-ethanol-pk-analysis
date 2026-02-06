@@ -1697,12 +1697,12 @@ ggpredict(Cmax_lm2_v3,
 
 ```{r}
 Cmax_lm2_v3 %>% 
-  broom::tidy(conf.int = TRUE) %>% filter(term == "lbm_kg") %>% 
+  broom::tidy(conf.int = TRUE) %>%
+  # filter(term == "lbm_kg") %>% 
   mutate(across(c(where(is.numeric), -p.value), ~round(.x, 4))) %>% 
   mutate(p.value = gtsummary::style_pvalue(p.value),
-         term = "Lean body mass, kg") %>% 
+         term = c("Intersept", "Age, years", "Lean body mass, kg")) %>% 
   select(-statistic) %>% 
-  slice_tail(n = 1) %>% 
   rename(
     `Indicator` = term,
     `Coefficient (β)` = estimate,
@@ -1757,7 +1757,7 @@ fit_AUC_mod_with_food <- lm(log(AUC) ~ dose_g_per_kg*route + food, order_0_df)
 summary(fit_AUC_mod_with_food, confint = TRUE, digits = 3)
 ```
 
-```{r, fig.width=6, fig.height=4}
+```{r, fig.width=6, fig.height=4, dpi=300}
 plot_auc <- plot_model(fit_AUC_mod_with_food, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3, axis.labels = c("Dose (g per kg) x Route (PO)", "Food status (fed)", "Route (PO)", "Dose (g per kg)","Intercept")) +
   geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
   labs(title = "Regression coefficients for AUC with 95% CI", 
@@ -1778,7 +1778,7 @@ d$ci_label <- sprintf(
 
 Compared with the fasted state, “fed” condition was associated with log(AUC) decreased by 0.36, AUC decreased by 30.2% (all other things being equal).Percent derived as (exp(β)−1)×100.
 
-```{r, fig.height=4, fig.width=6}
+```{r, fig.height=4, fig.width=6, dpi=300}
 plot_cmax <- plot_model(Cmax_lm2_v2, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3, digits = 3) +
   geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
   labs(title = "Regression coefficients for Cmax with 95% CI", 
@@ -1791,7 +1791,7 @@ plot_cmax
 
 Compared with the fasted state, “fed” condition was associated with log(Cmax) decreased by 0.286, Cmax decreased by 24.9% (all other things being equal).
 
-```{r, fig.width = 4, fig.height = 4}
+```{r, fig.width = 4, fig.height = 4, dpi=300}
 plot_beta <- plot_model(fit_Beta_1, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.5, digits = 3,   axis.labels = c("Dose (g per kg) x Route (PO)", "food (fed)","Route (PO)", "Dose (g per kg)", "Intercept")) +
     geom_hline(yintercept = 0, color = "gray3", size = 0.5) +
 labs(title = "Regression coefficients \n for Beta with 95% CI", 
@@ -1835,8 +1835,6 @@ Eriksson_1977 <- Eriksson_1977 %>%
       dose_g_per_kg == 3.00 ~ 3,
     ))
 ```
-
-
 
 ## 2.2. Concentration-time plots
 

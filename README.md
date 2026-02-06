@@ -100,6 +100,57 @@ Human ethanol pharmacokinetic data (8 datasets) [3–8] and rat data (2 datasets
 
 ## Results
 
+### Data-Driven Model Exploration
+
+![AUC](figures/auc_r_model.png)
+
+![Cmax](figures/cmax_r_model.png)
+
+![Tmax](figures/tmax_r_model.png)
+
+![Beta](figures/beta_r_model.png)
+
+### Hypothesis-Driven Covariate Modeling
+
+![Vd](figures/vd_question_model.png)
+
+![Cmax](figures/cmax_question_model.png)
+
+![Models for food status](figures/food_status.png)
+
+### Allometric scaling (metric)
+
+$$
+\text{Relative error (%)} =
+\frac{\text{Predicted} - \text{Observed}}{\text{Observed}} \times 100
+$$
+
+**IV route of administrations**
+
+![Vd_sc](figures/vd_iv_scaling.png)
+
+![Beta_sc](figures/beta_iv_scaling.png)
+
+![Vmax_sc](figures/vmax_iv_scaling.png)
+
+**PO route of administrations**
+
+Rat data were available at 0.75 and 3.0 g/kg doses, whereas human data were limited to ≤0.70 g/kg.
+
+At the rat dose of 0.75 g/kg, the elimination phase was not captured in the averaged data, precluding estimation of Beta; therefore, scaling results are based on Vd only.
+
+*Dose 0.75 g/kg*
+
+![Vd_sc](figures/vd_po_0.75_sc.png)
+
+*Dose 3 g/kg*
+
+![Vd_sc](figures/vd_po_3_sc.png)
+
+![Beta_sc](figures/beta_po_3_sc.png)
+
+![Vmax_sc](figures/vmax_po_3_sc.png)
+
 ## Software Requirements
 
 Please, use renv::restore() to restore all dependencies. All packages and requirements are recorded in 'renv.lock' file.
