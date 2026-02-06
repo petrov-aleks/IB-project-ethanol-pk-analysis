@@ -52,17 +52,17 @@ Contribution: data preparation, exploratory analysis, preparing presentations, w
 
 ## Structure of repository
 
--   [data/raw](data/raw/) - raw input data
+-   [data/raw](data/raw/) - raw input data;
 
--   [figures](figures/) - figures for readme page
+-   [figures](figures/) - figures for readme page;
 
--   [renv](renv/) - renv infrastructure files
+-   [renv](renv/) - renv infrastructure files;
 
--   [Ethanol_Pharmacokinetics_Report.Rmd](Ethanol_Pharmacokinetics_Report.Rmd) - main RMarkdown file containing the full analysis
+-   [Ethanol_Pharmacokinetics_Report.Rmd](Ethanol_Pharmacokinetics_Report.Rmd) - main RMarkdown file containing the full analysis;
 
--   [Ethanol_Pharmacokinetics_Report.html](Ethanol_Pharmacokinetics_Report.html) - rendered HTML report (please download before opening this file)
+-   [Ethanol_Pharmacokinetics_Report.html](Ethanol_Pharmacokinetics_Report.html) - rendered HTML report (**please download before opening this file**);
 
--   [renv.lock](renv.lock) - locked package versions and dependencies
+-   [renv.lock](renv.lock) - locked package versions and dependencies.
 
 ## Introduction
 
