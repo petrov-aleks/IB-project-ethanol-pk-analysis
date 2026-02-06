@@ -60,7 +60,7 @@ Contribution: data preparation, exploratory analysis, preparing presentations, w
 
 -   [Ethanol_Pharmacokinetics_Report.Rmd](Ethanol_Pharmacokinetics_Report.Rmd) - main RMarkdown file containing the full analysis
 
--   [Ethanol_Pharmacokinetics_Report.html](Ethanol_Pharmacokinetics_Report.html) - Rendered HTML report
+-   [Ethanol_Pharmacokinetics_Report.html](Ethanol_Pharmacokinetics_Report.html) - rendered HTML report (please download before opening this file)
 
 -   [renv.lock](renv.lock) - locked package versions and dependencies
 
