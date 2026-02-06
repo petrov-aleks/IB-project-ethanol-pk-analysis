@@ -93,3 +93,23 @@ Human ethanol pharmacokinetic data (8 datasets) [3–8] and rat data (2 datasets
 Please, use renv::restore() to restore all dependencies. All packages and requirements are recorded in 'renv.lock' file.
 
 ## References
+
+1.	Danpanichkul, P., Díaz, L. A., Suparan, K., Tothanarungroj, P., Sirimangklanurak, S., Auttapracha, T., Blaney, H. L., Sukphutanan, B., Pang, Y., Kongarin, S., Idalsoaga, F., Fuentes-López, E., Leggio, L., Noureddin, M., White, T. M., Louvet, A., Mathurin, P., Loomba, R., Kamath, P. S., … Arab, J. P. (2025). Global epidemiology of alcohol-related liver disease, liver cancer, and alcohol use disorder, 2000–2021. Clinical and Molecular Hepatology, 31(2), 525–547. https://doi.org/10.3350/cmh.2024.0835
+
+2.	Holford, N. H. G. (1987). Clinical Pharmacokinetics of Ethanol. Clinical Pharmacokinetics, 13(5), 273–292. https://doi.org/10.2165/00003088-198713050-00001
+
+3.	Ammon, E., Schäfer, C., Hofmann, U., & Klotz, U. (1996). Disposition and first-pass metabolism of ethanol in humans: Is it gastric or hepatic and does it depend on gender?*. Clinical Pharmacology & Therapeutics, 59(5), 503–513. https://doi.org/10.1016/S0009-9236(96)90178-2
+
+4.	Thierauf-Emberger, A., Schuldis, D., Dacko, M., & Lange, T. (2023). Ethanol Kinetics in the Human Brain Determined by Magnetic Resonance Spectroscopy. International Journal of Molecular Sciences, 24(17), 13499. https://doi.org/10.3390/ijms241713499
+
+5.	Vestal, R. E., McGuire, E. A., Tobin, J. D., Andres, R., Norris, A. H., & Mezey, E. (1977). Aging and ethanol metabolism. Clinical Pharmacology & Therapeutics, 21(3), 343–354. https://doi.org/10.1002/cpt1977213343
+
+6.	Wilkinson, P. K., Sedman, A. J., Sakmar, E., Earhart, R. H., Weidler, D. J., & Wagner, J. G. (1976). Blood ethanol concentrations during and following constant‐rate intravenous infusion of alcohol. Clinical Pharmacology & Therapeutics, 19(2), 213–223. https://doi.org/10.1002/cpt1976192213
+
+7.	Wilkinson, P. K., Sedman, A. J., Sakmar, E., Kay, D. R., & Wagner, J. G. (1977). Pharmacokinetics of ethanol after oral administration in the fasting state. Journal of Pharmacokinetics and Biopharmaceutics, 5(3), 207–224. https://doi.org/10.1007/BF01065396
+
+8.	Yelland, L. N., Burns, J. P., Sims, D. N., Salter, A. B., & White, J. M. (2008). Inter- and intra-subject variability in ethanol pharmacokinetic parameters: Effects of testing interval and dose. Forensic Science International, 175(1), 65–72. https://doi.org/10.1016/j.forsciint.2007.05.011
+
+9.	Eriksson, C. J. P., & Sippel, H. W. (1977). The distribution and metabolism of acetaldehyde in rats during ethanol oxidation—I: The distribution of acetaldehyde in liver, brain, blood and breath. Biochemical Pharmacology, 26(3), 241–247. https://doi.org/10.1016/0006-2952(77)90310-0
+
+10.	Kozawa, S., Yukawa, N., Liu, J., Shimamoto, A., Kakizaki, E., & Fujimiya, T. (2007). Effect of chronic ethanol administration on disposition of ethanol and its metabolites in rat. Alcohol, 41(2), 87–93. https://doi.org/10.1016/j.alcohol.2007.03.002
