@@ -17,6 +17,8 @@ Our study investigates ethanol pharmacokinetics using biostatistical modeling ap
  + [Study plan](https://github.com/petrov-aleks/IB-project-ethanol-pk-analysis/blob/main/README.md#study-plan)
 
  + [Results](https://github.com/petrov-aleks/IB-project-ethanol-pk-analysis/blob/main/README.md#results)
+ 
+ + [Conclusions](https://github.com/petrov-aleks/IB-project-ethanol-pk-analysis/blob/main/README.md#conclusions)
 
  + [Software Requirements](https://github.com/petrov-aleks/IB-project-ethanol-pk-analysis/blob/main/README.md#software-requirements)
 
@@ -126,6 +128,22 @@ At the rat dose of 0.75 g/kg, the elimination phase was not captured in the aver
 ![Beta_sc](figures/beta_po_3_sc.png)
 
 ![Vmax_sc](figures/vmax_po_3_sc.png)
+
+## Conclusions
+
+ + Linear regression identified statistically significant **key covariates** contributing to population variability: Sex and body composition metrics affect Vd, Food status affects AUC, Cmax and Beta.
+ 
+ + Covariate effect explains only a **part of observed variability**.
+
+ + **Predictive performance** highlighted differences in predictive accuracy: 
+ 
+    + Vd: Allometric classic mean error (%) +34.53, Matsumoto -7.02;
+    
+    + Beta: Allometric classic mean error (%) -43.97, Matsumoto -35.47;
+    
+    + Vmax: Allometric classic mean error (%) +114.81, Matsumoto +71.00.
+
+  + Allometry scaling showed **limited accuracy** for PK parameters.
 
 ## Software Requirements
 
