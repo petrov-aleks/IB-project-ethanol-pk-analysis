@@ -64,7 +64,7 @@ So, the **goal of a project** is characterize ethanol pharmacokinetics (PK) usin
 
 ## Data
 
-Human ethanol pharmacokinetic data (8 datasets) [3–8] and rat data (2 datasets) [9, 10] were analyzed.
+Human ethanol pharmacokinetic data (8 datasets) [3–9] and rat data (2 datasets) [10, 11] were analyzed.
 
 ![Figure 1. Included data schema](figures/data.png)
 
@@ -185,6 +185,8 @@ Contribution: data preparation, exploratory analysis, preparing presentations, w
 
 8.  Yelland, L. N., Burns, J. P., Sims, D. N., Salter, A. B., & White, J. M. (2008). Inter- and intra-subject variability in ethanol pharmacokinetic parameters: Effects of testing interval and dose. Forensic Science International, 175(1), 65–72. <https://doi.org/10.1016/j.forsciint.2007.05.011>
 
-9.  Eriksson, C. J. P., & Sippel, H. W. (1977). The distribution and metabolism of acetaldehyde in rats during ethanol oxidation—I: The distribution of acetaldehyde in liver, brain, blood and breath. Biochemical Pharmacology, 26(3), 241–247. [https://doi.org/10.1016/0006-2952(77)90310-0](https://doi.org/10.1016/0006-2952(77)90310-0){.uri}
+9. Jones, A. W. (1984). Interindividual variations in the disposition and metabolism of ethanol in healthy men. Alcohol, 1(5), 385–391. https://doi.org/10.1016/0741-8329(84)90008-9 
 
-10. Kozawa, S., Yukawa, N., Liu, J., Shimamoto, A., Kakizaki, E., & Fujimiya, T. (2007). Effect of chronic ethanol administration on disposition of ethanol and its metabolites in rat. Alcohol, 41(2), 87–93. <https://doi.org/10.1016/j.alcohol.2007.03.002>
+10.  Eriksson, C. J. P., & Sippel, H. W. (1977). The distribution and metabolism of acetaldehyde in rats during ethanol oxidation—I: The distribution of acetaldehyde in liver, brain, blood and breath. Biochemical Pharmacology, 26(3), 241–247. [https://doi.org/10.1016/0006-2952(77)90310-0](https://doi.org/10.1016/0006-2952(77)90310-0){.uri}
+
+11. Kozawa, S., Yukawa, N., Liu, J., Shimamoto, A., Kakizaki, E., & Fujimiya, T. (2007). Effect of chronic ethanol administration on disposition of ethanol and its metabolites in rat. Alcohol, 41(2), 87–93. <https://doi.org/10.1016/j.alcohol.2007.03.002>
