@@ -4,34 +4,6 @@ This repository contains the final project from the professional retraining prog
 
 Our study investigates ethanol pharmacokinetics using biostatistical modeling approaches. We assessed the influence of multiple covariates on key pharmacokinetic parameters by fitting linear regression models.
 
-# Contributors
-
-**Students**:
-
-1)  [Anna Vronskaia](https://github.com/annavronskaia) (*BIOCAD, St. Petersburg*)
-
-Contribution: data preparation, individual dataset analysis, regression analysis.
-
-2)  [Alexey Gordeev](https://github.com/deigord) (*Almazov National Medical Research Centre, St. Petersburg*)
-
-Contribution: data preparation, functional programming, regression analysis, allometric scaling, repository management.
-
-3)  [Ekaterina Danilina](https://github.com/kat-dani) (*Kurgan State University, Kurgan*)
-
-Contribution: data preparation, regression analysis.
-
-4)  [Milana Sagitova](https://github.com/sagitowam) (*Sechenov University, Moscow*)
-
-Contriobution: data preparation, regression analysis, allometric scaling.
-
-5)  [Sergey Tsaregorodtsev](https://github.com/svtsar) (*Russian University of Medicine, Moscow*)
-
-Contribution: data preparation, exploratory analysis, preparing presentations, writing thesis statements.
-
-**Supervisor**:
-
-[Alexander Petrov](https://github.com/petrov-aleks) (*University of Potsdam, Potsdam*)
-
 ## Table of content
 
 [Structure of repository](https://github.com/petrov-aleks/IB-project-ethanol-pk-analysis/blob/main/README.md#structure-of-repository)
@@ -47,6 +19,8 @@ Contribution: data preparation, exploratory analysis, preparing presentations, w
 [Results](https://github.com/petrov-aleks/IB-project-ethanol-pk-analysis/blob/main/README.md#results)
 
 [Software Requirements](https://github.com/petrov-aleks/IB-project-ethanol-pk-analysis/blob/main/README.md#software-requirements)
+
+[Contributors](https://github.com/petrov-aleks/IB-project-ethanol-pk-analysis/blob/main/README.md#contributors)
 
 [References](https://github.com/petrov-aleks/IB-project-ethanol-pk-analysis/blob/main/README.md#references)
 
@@ -120,8 +94,10 @@ Human ethanol pharmacokinetic data (8 datasets) [3–8] and rat data (2 datasets
 
 ### Allometric scaling (metric)
 
+*Relative error (%)*
+
 $$
-\text{Relative error (\%)} =
+\text{Relative error} =
 \frac{\text{Predicted} - \text{Observed}}{\text{Observed}} \times 100
 $$
 
@@ -153,7 +129,43 @@ At the rat dose of 0.75 g/kg, the elimination phase was not captured in the aver
 
 ## Software Requirements
 
-Please, use renv::restore() to restore all dependencies. All packages and requirements are recorded in 'renv.lock' file.
+Statistical analysis was performed using R version 4.5.1 with RStudio 2025.09.1 Build 401.
+
+Please, use
+
+``` r
+renv::restore()
+```
+
+to restore all dependencies. All packages and requirements are recorded in 'renv.lock' file.
+
+# Contributors
+
+**Students**:
+
+1)  [Anna Vronskaia](https://github.com/annavronskaia) (*BIOCAD, St. Petersburg*)
+
+Contribution: data preparation, individual dataset analysis, regression analysis.
+
+2)  [Alexey Gordeev](https://github.com/deigord) (*Almazov National Medical Research Centre, St. Petersburg*)
+
+Contribution: data preparation, functional programming, regression analysis, allometric scaling, repository management.
+
+3)  [Ekaterina Danilina](https://github.com/kat-dani) (*Kurgan State University, Kurgan*)
+
+Contribution: data preparation, regression analysis.
+
+4)  [Milana Sagitova](https://github.com/sagitowam) (*Sechenov University, Moscow*)
+
+Contriobution: data preparation, regression analysis, allometric scaling.
+
+5)  [Sergey Tsaregorodtsev](https://github.com/svtsar) (*Russian University of Medicine, Moscow*)
+
+Contribution: data preparation, exploratory analysis, preparing presentations, writing thesis statements.
+
+**Supervisor**:
+
+[Alexander Petrov](https://github.com/petrov-aleks) (*University of Potsdam, Potsdam*)
 
 ## References
 
