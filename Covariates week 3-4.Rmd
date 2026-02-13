@@ -1413,6 +1413,111 @@ resid_panel(Cmax_lm2_v3, plots = c("qq", "hist"))
 resid_panel(Cmax_lm2_v3, plots = c("lev", "cookd"))
 ```
 
+## Vd
+
+```{r basic lms}
+fit_Vd_1 <- lm(log(V_d_0_order) ~ route + food + site, data = order_0_df_factor)
+
+summary(fit_Vd_1)
+
+cat("\n===============================================================\n")
+
+fit_Vd_3 <- lm(log(V_d_0_order) ~ route, data = order_0_df_factor)
+
+summary(fit_Vd_3)
+
+cat("\n===============================================================\n")
+
+fit_Vd_4 <- lm(log(V_d_0_order) ~ route + site, data = order_0_df_factor)
+
+summary(fit_Vd_4)
+
+cat("\n===============================================================\n")
+
+fit_Vd_5 <- lm(log(V_d_0_order) ~ route + food, data = order_0_df_factor)
+
+summary(fit_Vd_5)
+
+cat("\n===============================================================\n")
+
+anova(fit_Vd_1, fit_Vd_3)
+
+anova(fit_Vd_1, fit_Vd_4)
+
+anova(fit_Vd_1, fit_Vd_5)
+```
+
+```{r}
+fit_Vd_3_sub <- lm(log(V_d_0_order) ~ 1,  data = order_0_df_factor)
+
+anova(fit_Vd_3, fit_Vd_3_sub)
+```
+
+```{r model check, fig.width = 16, fig.height = 8}
+check_model(fit_Vd_3)
+```
+
+```{r}
+fit_Vd_3_add <- lm(log(V_d_0_order) ~ route + wt_kg * sex, data = order_0_df_factor)
+fit_Vd_3_add2 <- lm(log(V_d_0_order) ~ route + wt_kg + sex, data = order_0_df_factor)
+
+anova(fit_Vd_3_add, fit_Vd_3_add2)
+
+summary(fit_Vd_3_add2)
+
+fit_Vd <- lm(log(V_d_0_order) ~ wt_kg + sex, data = order_0_df_factor)
+
+anova(fit_Vd, fit_Vd_3_add2)
+
+summary(fit_Vd)
+
+```
+
+```{r, fig.width = 16, fig.height = 8}
+check_model(fit_Vd)
+```
+
+```{r}
+resid_panel(fit_Vd, plots = c("lev", "cookd"))
+```
+```{r}
+ggpredict(fit_Vd, terms = c("wt_kg", "sex"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.2632") + xlab("Weight (kg)")
+```
+```{r}
+plot_model(fit_Vd, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3,  axis.labels = c("Weight (kg)", "Sex", "Intercept"), title = "Regression coeffecients with 95% CI") +
+  theme_nice()
+```
+
+## Beta
+
+```{r}
+fit_Beta_1 <- lm(log(Beta) ~ log(dose_g_per_kg) * route, data = order_0_df_factor)
+
+summary(fit_Beta_1)
+```
+
+```{r}
+fit_Beta_1_sub <- lm(log(Beta) ~ 1,  data = order_0_df_factor)
+
+anova(fit_Beta_1, fit_Beta_1_sub)
+```
+
+```{r, fig.width = 16, fig.height = 8}
+check_model(fit_Beta_1)
+```
+
+```{r, fig.width = 16, fig.height = 8}
+resid_panel(fit_Beta_1, plots = c("lev", "cookd"))
+```
+
+```{r}
+ggpredict(fit_Beta_1, terms = c("dose_g_per_kg", "route"), ci_level = 0) %>% plot(show_data = TRUE, log_y = FALSE, jitter = .01) + labs(subtitle = "Adjusted R-squared:  0.5671") + xlab("Dose (g per kg)")
+```
+
+```{r}
+plot_model(fit_Beta_1, show.values = TRUE,  show.intercept = TRUE, value.offset = 0.3,  axis.labels = c("Dose (g per kg)", "Route (PO)", "Dose (g per kg) x Route (PO)", "Intercept"), title = "Regression coeffecients with 95% CI") +
+  theme_nice()
+```
 ## 6.4. Построение регрессионных моделей по C_0
 
 ```{r С_0_0_order-lm1-v1}
